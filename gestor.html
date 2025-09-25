@@ -1,0 +1,3415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão - Garagem & Industrial</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Ícones (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Geração de PDF (Mantido para futuras exportações) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    
+    <script>
+        // Funções Globais para a API do Google, para serem acessíveis pelos `onload`
+        window.gapiInited = false;
+        window.gisInited = false;
+        window.tokenClient = null;
+
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        function gisLoaded() {
+            window.tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: '794405215347-73g3h2ert2jb9f1rofdorhfn39jig324.apps.googleusercontent.com',
+                scope: 'https://www.googleapis.com/auth/drive.file',
+                callback: '', // O callback será tratado na promessa
+            });
+            window.gisInited = true;
+        };
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: 'AIzaSyBzgayJXGRcLyFhI1sDu6ZWn9llJ3fq1jc',
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            });
+            window.gapiInited = true;
+        }
+    </script>
+    <!-- Google API Client Libraries -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+
+    <style>
+        /* Estilos Globais */
+        :root {
+            --bg-dark: #121224;
+            --bg-light-dark: #1a1a2e;
+            --primary: #0f3460;
+            --accent: #e94560;
+            --text-light: #f0f0f0;
+            --text-muted: #a0a0b0;
+            --orange-highlight: #ff6700;
+            --green-success: #00b894;
+            --yellow-warning: #f1c40f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            overflow-x: hidden;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Tela de Autenticação */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--bg-dark);
+        }
+
+        .auth-form {
+            background-color: var(--bg-light-dark);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border-top: 4px solid var(--orange-highlight);
+        }
+
+        .auth-form h2 {
+            margin-bottom: 25px;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: var(--bg-dark);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--orange-highlight);
+            box-shadow: 0 0 0 3px rgba(255, 103, 0, 0.2);
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--orange-highlight);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .auth-btn:hover {
+            background-color: #d65a00;
+        }
+
+        .toggle-link {
+            margin-top: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .toggle-link span {
+            color: var(--orange-highlight);
+            font-weight: bold;
+        }
+        #auth-error {
+            color: var(--accent);
+            margin-top: 15px;
+            min-height: 20px;
+        }
+        
+        /* Layout Principal da Aplicação */
+        #main-app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-light-dark);
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s;
+            border-right: 1px solid var(--primary);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .sidebar-header h1 {
+            color: var(--text-light);
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .sidebar-header h1 i {
+            color: var(--orange-highlight);
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s, color 0.3s;
+            font-weight: 500;
+        }
+
+        .sidebar-menu a:hover {
+            background-color: var(--primary);
+            color: var(--text-light);
+        }
+        .sidebar-menu a.active {
+            background-color: var(--orange-highlight);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .sidebar-menu a i {
+            margin-right: 15px;
+            width: 20px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+        }
+        
+        .main-content {
+            flex-grow: 1;
+            padding: 40px;
+            background-color: var(--bg-dark);
+            overflow-y: auto;
+        }
+
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h2 {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        
+        .search-bar {
+            width: 100%;
+            max-width: 350px;
+        }
+        
+        .search-bar input {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--primary);
+            background-color: var(--bg-light-dark);
+            color: var(--text-light);
+            width: 100%;
+            font-size: 14px;
+        }
+
+        /* Estilo dos Cards do Dashboard */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        .card {
+            background-color: var(--bg-light-dark);
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 5px solid var(--orange-highlight);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .card-icon {
+            font-size: 32px;
+            color: var(--orange-highlight);
+            margin-bottom: 15px;
+        }
+        .card-title {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .card-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .section-grid {
+             display: grid;
+             grid-template-columns: 1fr 1fr;
+             gap: 30px;
+        }
+        .section-container {
+            background-color: var(--bg-light-dark);
+            padding: 25px;
+            border-radius: 12px;
+        }
+        .section-container h3 {
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            font-weight: 600;
+        }
+        .section-container ul {
+            list-style: none;
+            padding-left: 5px;
+        }
+        .section-container li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--primary);
+        }
+        .section-container li:last-child {
+            border-bottom: none;
+        }
+
+
+        /* Tabelas */
+        .table-container {
+            overflow-x: auto;
+            background-color: var(--bg-light-dark);
+            padding: 20px;
+            border-radius: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--primary);
+        }
+        th {
+            background-color: var(--primary);
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        tbody tr {
+            transition: background-color 0.2s;
+        }
+        tbody tr.clickable-row:hover {
+            background-color: var(--primary);
+            cursor: pointer;
+        }
+        tbody tr:nth-child(even) {
+            background-color: rgba(15, 52, 96, 0.2);
+        }
+        
+        .actions-cell button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 16px;
+            transition: color 0.2s;
+            padding: 5px;
+        }
+        .actions-cell .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0 2px;
+        }
+        .actions-cell button.edit-btn:hover { color: var(--green-success); }
+        .actions-cell button.delete-btn:hover { color: var(--accent); }
+        .actions-cell button.history-btn:hover { color: var(--orange-highlight); }
+        .actions-cell button.view-btn:hover { color: var(--orange-highlight); }
+
+        .fornecedor-link {
+            color: var(--orange-highlight);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /* Botões */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background-color: var(--orange-highlight);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background-color: #d65a00;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255,103,0,0.3);
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--bg-light-dark);
+            margin: auto;
+            padding: 30px 40px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            position: relative;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+        }
+
+        .close-btn {
+            color: #aaa;
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .modal-content h3 {
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-dark);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 15px;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        .modal-actions {
+            margin-top: 30px;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        /* Detalhes (Veículo/Projeto) */
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            background-color: var(--bg-light-dark);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .detail-item {
+            padding: 10px;
+        }
+        .detail-item strong {
+            display: block;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .detail-item span {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .servico-rapido-btn {
+            background-color: var(--primary);
+            color: var(--text-light);
+            border: 1px solid var(--primary);
+            padding: 8px 15px;
+            margin: 0 8px 8px 0;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .servico-rapido-btn:hover {
+            background-color: var(--orange-highlight);
+            border-color: var(--orange-highlight);
+        }
+        
+        .pecas-lista, #anexos-lista {
+            list-style: none;
+            margin-top: 15px;
+            padding: 0;
+        }
+        .pecas-lista li, #anexos-lista li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .pecas-lista li:nth-child(odd), #anexos-lista li:nth-child(odd) {
+            background-color: var(--bg-dark);
+        }
+        .pecas-lista .remover-peca-btn, #anexos-lista .remover-anexo-btn {
+            background: none; border: none; color: var(--accent); cursor: pointer;
+        }
+
+        #anexos-lista a {
+            color: var(--text-light);
+            text-decoration: none;
+        }
+        #anexos-lista a:hover {
+            color: var(--orange-highlight);
+        }
+        
+        .progress-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .progress-bar-background {
+            flex-grow: 1;
+            background-color: var(--bg-dark);
+            border-radius: 20px;
+            height: 20px;
+            overflow: hidden;
+            border: 1px solid var(--primary);
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%; /* Will be set by JS */
+            background-color: var(--green-success);
+            border-radius: 20px;
+            transition: width 0.5s ease-in-out;
+        }
+        #objetivos-lista li {
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #objetivos-lista input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        #objetivos-lista .objetivo-texto {
+            flex-grow: 1;
+        }
+        #objetivos-lista .objetivo-texto.concluido {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .status-orcamento { background-color: var(--yellow-warning); color: var(--bg-dark); }
+        .status-aprovada { background-color: var(--green-success); color: #fff; }
+        .status-paga { background-color: var(--primary); color: #fff; }
+
+        /* Checklist Styles */
+        #signature-canvas {
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            cursor: crosshair;
+        }
+        .checklist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Tab Styles */
+        .tabs {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--primary);
+        }
+        .tab-link {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .tab-link.active {
+            color: var(--orange-highlight);
+            border-bottom-color: var(--orange-highlight);
+            font-weight: 600;
+        }
+        .tab-content.hidden {
+            display: none;
+        }
+
+
+        /* Responsividade */
+        @media (max-width: 992px) {
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            #main-app {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 10px;
+                position: fixed;
+                bottom: 0;
+                background-color: var(--bg-light-dark);
+                z-index: 100;
+                border-top: 1px solid var(--primary);
+            }
+            .sidebar-header, .sidebar-footer {
+                display: none;
+            }
+            .sidebar-menu {
+                display: flex;
+                width: 100%;
+                justify-content: space-evenly;
+            }
+            .sidebar-menu a {
+                margin: 0 5px;
+                flex-direction: column;
+                gap: 5px;
+                padding: 10px 5px;
+            }
+            .sidebar-menu a span {
+                font-size: 12px;
+            }
+            .sidebar-menu a i {
+                margin: 0;
+            }
+            .main-content {
+                padding: 20px;
+                padding-bottom: 80px; /* Space for fixed sidebar */
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            .header h2 { font-size: 26px; }
+            .search-bar { max-width: 100%; }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group.full-width, .form-group {
+                grid-column: auto;
+            }
+            .modal-content {
+                max-width: 95%;
+                padding: 20px;
+            }
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #nota-printable-content, #nota-printable-content * {
+                visibility: visible;
+            }
+            #nota-printable-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .modal-actions {
+                display: none;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Tela de Login -->
+    <div id="login-view" class="auth-container">
+        <div class="auth-form">
+            <h2><i class="fas fa-warehouse"></i> Gestão Integrada</h2>
+            <form id="login-form">
+                <div class="input-group">
+                    <input type="email" id="login-email" placeholder="E-mail" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="login-password" placeholder="Senha" required>
+                </div>
+                <button type="submit" class="auth-btn">Entrar</button>
+            </form>
+            <p id="auth-error"></p>
+            <p class="toggle-link">Não tem uma conta? <span id="show-register">Registre-se</span></p>
+        </div>
+    </div>
+
+    <!-- Tela de Registro -->
+    <div id="register-view" class="auth-container hidden">
+        <div class="auth-form">
+            <h2><i class="fas fa-user-plus"></i> Criar Conta</h2>
+            <form id="register-form">
+                <div class="input-group">
+                    <input type="email" id="register-email" placeholder="E-mail" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="register-password" placeholder="Senha" required>
+                </div>
+                <button type="submit" class="auth-btn">Registrar</button>
+            </form>
+            <p id="register-error"></p>
+            <p class="toggle-link">Já tem uma conta? <span id="show-login">Faça Login</span></p>
+        </div>
+    </div>
+
+    <!-- Aplicação Principal -->
+    <div id="main-app" class="hidden">
+        <!-- Menu Lateral -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-cogs"></i> Gestor</h1>
+            </div>
+            <div class="sidebar-menu">
+                <a href="#" class="nav-link active" data-target="dashboard"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a>
+                <a href="#" class="nav-link" data-target="automotivo"><i class="fas fa-car"></i> <span>Automotivo</span></a>
+                <a href="#" class="nav-link" data-target="industrial"><i class="fas fa-industry"></i> <span>Industrial</span></a>
+                <a href="#" class="nav-link" data-target="notas"><i class="fas fa-file-invoice-dollar"></i> <span>Notas</span></a>
+                <a href="#" class="nav-link" data-target="clientes"><i class="fas fa-users"></i> <span>Clientes</span></a>
+                <a href="#" class="nav-link" data-target="fornecedores"><i class="fas fa-truck"></i> <span>Fornecedores</span></a>
+                <a href="#" class="nav-link" data-target="ferramentas"><i class="fas fa-wrench"></i> <span>Ferramentas</span></a>
+                <a href="#" class="nav-link" data-target="pecas"><i class="fas fa-box-open"></i> <span>Peças</span></a>
+                <a href="#" class="nav-link" data-target="configuracoes"><i class="fas fa-cog"></i> <span>Configurações</span></a>
+            </div>
+            <div class="sidebar-footer">
+                <a href="#" id="logout-btn" class="nav-link"><i class="fas fa-sign-out-alt"></i> <span>Sair</span></a>
+            </div>
+        </nav>
+
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+            <!-- Seção Dashboard -->
+            <section id="dashboard-section" class="content-section active">
+                <div class="header">
+                    <h2>Dashboard</h2>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-tools"></i></div>
+                        <div class="card-title">Veículos na Oficina</div>
+                        <div class="card-value" id="veiculos-manutencao-count">0</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-tasks"></i></div>
+                        <div class="card-title">Projetos em Andamento</div>
+                        <div class="card-value" id="projetos-andamento-count">0</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <div class="card-title">Total Orçado (Mês)</div>
+                        <div class="card-value" id="total-orcado">R$ 0,00</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-hand-holding-usd"></i></div>
+                        <div class="card-title">Total Faturado (Mês)</div>
+                        <div class="card-value" id="total-faturado">R$ 0,00</div>
+                    </div>
+                </div>
+                <div class="section-grid">
+                    <div class="section-container">
+                        <h3><i class="fas fa-calendar-alt"></i> Próximos Prazos (Projetos)</h3>
+                        <ul id="prazos-list"><li>Nenhum prazo iminente.</li></ul>
+                    </div>
+                    <div class="section-container">
+                        <h3><i class="fas fa-history"></i> Atividades Recentes</h3>
+                        <ul id="atividades-recentes-list"><li>Nenhuma atividade recente.</li></ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção Automotivo -->
+            <section id="automotivo-section" class="content-section">
+                <div class="header">
+                    <h2>Módulo Automotivo</h2>
+                    <div class="search-bar">
+                        <input type="text" id="automotivo-search" placeholder="Buscar por placa, modelo, cliente...">
+                    </div>
+                    <button class="btn btn-primary" id="add-veiculo-btn"><i class="fas fa-plus"></i> Adicionar Veículo</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Placa</th>
+                                <th>Marca/Modelo</th>
+                                <th>Quilometragem</th>
+                                <th>Proprietário</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="veiculos-table"></tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Seção Detalhes do Veículo -->
+            <section id="veiculo-detalhes-section" class="content-section">
+                <div class="header">
+                    <h2 id="veiculo-detalhe-titulo">Detalhes do Veículo</h2>
+                    <button class="btn btn-primary" id="voltar-automotivo-btn"><i class="fas fa-arrow-left"></i> Voltar</button>
+                </div>
+
+                <div class="details-grid">
+                    <div class="detail-item"><strong>Placa</strong><span id="detalhe-placa"></span></div>
+                    <div class="detail-item"><strong>Marca/Modelo</strong><span id="detalhe-marca-modelo"></span></div>
+                    <div class="detail-item"><strong>Ano</strong><span id="detalhe-ano"></span></div>
+                    <div class="detail-item"><strong>Quilometragem</strong><span id="detalhe-quilometragem"></span></div>
+                    <div class="detail-item"><strong>Proprietário</strong><span id="detalhe-proprietario"></span></div>
+                </div>
+
+                <div class="header">
+                    <h3>Histórico de Serviços</h3>
+                    <div>
+                        <button class="btn btn-primary" id="abrir-checklist-btn"><i class="fas fa-clipboard-check"></i> Novo Checklist</button>
+                        <button class="btn btn-primary" id="gerar-nota-btn"><i class="fas fa-file-invoice"></i> Gerar Orçamento</button>
+                        <button class="btn btn-primary" id="abrir-servico-modal-btn"><i class="fas fa-plus"></i> Adicionar Serviço</button>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-bottom: 30px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selecionar-todos-servicos"></th>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Peças</th>
+                                <th>Valor Total</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servicos-table"></tbody>
+                    </table>
+                </div>
+
+                <div class="header">
+                    <h3>Histórico de Checklists</h3>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="checklists-table"></tbody>
+                    </table>
+                </div>
+
+            </section>
+
+            <!-- Seção Industrial -->
+            <section id="industrial-section" class="content-section">
+                <div class="header">
+                    <h2>Módulo Industrial</h2>
+                     <div class="search-bar">
+                        <input type="text" id="industrial-search" placeholder="Buscar por projeto, cliente...">
+                    </div>
+                    <button class="btn btn-primary" id="add-projeto-btn"><i class="fas fa-plus"></i> Adicionar Projeto</button>
+                </div>
+                 <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Projeto</th>
+                                <th>Cliente</th>
+                                <th>Prazo</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projetos-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+             <!-- Seção Detalhes do Projeto -->
+            <section id="projeto-detalhes-section" class="content-section">
+                <div class="header">
+                    <h2 id="projeto-detalhe-titulo">Detalhes do Projeto</h2>
+                    <button class="btn btn-primary" id="voltar-industrial-btn"><i class="fas fa-arrow-left"></i> Voltar</button>
+                </div>
+
+                <div class="details-grid">
+                    <div class="detail-item"><strong>Projeto</strong><span id="detalhe-projeto-nome"></span></div>
+                    <div class="detail-item"><strong>Cliente</strong><span id="detalhe-projeto-cliente"></span></div>
+                    <div class="detail-item"><strong>Prazo</strong><span id="detalhe-projeto-prazo"></span></div>
+                    <div class="detail-item"><strong>Valor</strong><span id="detalhe-projeto-valor"></span></div>
+                    <div class="detail-item full-width"><strong>Descrição</strong><span id="detalhe-projeto-descricao"></span></div>
+                </div>
+
+                <div class="section-container" style="margin-bottom: 30px;">
+                    <h3><i class="fas fa-tasks"></i> Progresso do Projeto</h3>
+                    
+                    <div class="progress-container" style="margin-bottom: 20px;">
+                        <div class="progress-bar-background">
+                            <div id="projeto-progresso-bar" class="progress-bar-fill"></div>
+                        </div>
+                        <span id="projeto-progresso-texto" style="margin-left: 10px; font-weight: bold;">0%</span>
+                    </div>
+
+                    <form id="add-objetivo-form" style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <input type="text" id="novo-objetivo-input" placeholder="Adicionar novo objetivo..." style="flex-grow: 1; padding: 10px; background-color: var(--bg-dark); border: 1px solid var(--primary); border-radius: 8px; color: var(--text-light);">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar</button>
+                    </form>
+
+                    <ul id="objetivos-lista" class="pecas-lista"></ul>
+                </div>
+
+
+                <div class="header">
+                    <h3>Anexos</h3>
+                    <div>
+                        <input type="file" id="gdrive-upload-input" class="hidden">
+                        <button class="btn btn-primary" id="gdrive-auth-btn"><i class="fab fa-google-drive"></i> Conectar ao Google Drive</button>
+                        <button class="btn btn-primary hidden" id="upload-gdrive-btn"><i class="fas fa-upload"></i> Enviar Ficheiro</button>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-link active" data-target="documentos-tab">Documentos</button>
+                    <button class="tab-link" data-target="projetos3d-tab">Projetos 3D</button>
+                </div>
+
+                <div id="documentos-tab" class="tab-content">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome do Arquivo</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projeto-documentos-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="projetos3d-tab" class="tab-content hidden">
+                     <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome do Arquivo</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projeto-projetos3d-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção Notas -->
+            <section id="notas-section" class="content-section">
+                <div class="header">
+                    <h2>Notas e Orçamentos</h2>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Cliente</th>
+                                <th>Placa</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notas-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Seção Clientes -->
+            <section id="clientes-section" class="content-section">
+                 <div class="header">
+                    <h2>Clientes</h2>
+                    <div class="search-bar">
+                        <input type="text" id="clientes-search" placeholder="Buscar por nome, CPF...">
+                    </div>
+                    <button class="btn btn-primary" id="add-cliente-btn"><i class="fas fa-user-plus"></i> Adicionar Cliente</button>
+                </div>
+                 <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF</th>
+                                <th>Telefone</th>
+                                <th>Segmento</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientes-table"></tbody>
+                    </table>
+                </div>
+            </section>
+            
+             <!-- Seção Fornecedores -->
+            <section id="fornecedores-section" class="content-section">
+                 <div class="header">
+                    <h2>Fornecedores</h2>
+                    <div class="search-bar">
+                        <input type="text" id="fornecedores-search" placeholder="Buscar por nome...">
+                    </div>
+                    <button class="btn btn-primary" id="add-fornecedor-btn"><i class="fas fa-user-plus"></i> Adicionar Fornecedor</button>
+                </div>
+                 <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Telefone</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fornecedores-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Seção Ferramentas -->
+            <section id="ferramentas-section" class="content-section">
+                <div class="header">
+                   <h2>Ferramentas e Equipamentos</h2>
+                   <button class="btn btn-primary" id="add-ferramenta-btn"><i class="fas fa-plus"></i> Adicionar Ferramenta</button>
+               </div>
+                <div class="table-container">
+                   <table>
+                       <thead>
+                           <tr>
+                               <th>Nome</th>
+                               <th>Tipo</th>
+                               <th>Localização</th>
+                               <th>Ações</th>
+                           </tr>
+                       </thead>
+                       <tbody id="ferramentas-table"></tbody>
+                   </table>
+               </div>
+           </section>
+
+            <!-- Seção Peças -->
+            <section id="pecas-section" class="content-section">
+                 <div class="header">
+                    <h2>Catálogo de Peças</h2>
+                    <button class="btn btn-primary" id="add-peca-btn"><i class="fas fa-plus"></i> Adicionar Peça</button>
+                </div>
+                 <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome da Peça</th>
+                                <th>Marca</th>
+                                <th>Fornecedor</th>
+                                <th>Preço</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pecas-table"></tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Seção Configurações -->
+            <section id="configuracoes-section" class="content-section">
+                 <div class="header">
+                    <h2>Configurações</h2>
+                </div>
+                <div class="section-container" style="margin-bottom: 30px;">
+                    <h3>Informações da Empresa</h3>
+                    <form id="empresa-info-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="empresa-nome">Nome da Empresa</label>
+                                <input type="text" id="empresa-nome">
+                            </div>
+                            <div class="form-group">
+                                <label for="empresa-cnpj">CNPJ / CPF</label>
+                                <input type="text" id="empresa-cnpj">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="empresa-endereco">Endereço</label>
+                                <input type="text" id="empresa-endereco">
+                            </div>
+                            <div class="form-group">
+                                <label for="empresa-telefone">Telefone</label>
+                                <input type="text" id="empresa-telefone">
+                            </div>
+                            <div class="form-group">
+                                <label for="empresa-email">Email</label>
+                                <input type="email" id="empresa-email">
+                            </div>
+                        </div>
+                        <div class="modal-actions" style="margin-top: 20px; padding-right: 0;">
+                            <button type="submit" class="btn btn-primary">Salvar Informações</button>
+                        </div>
+                    </form>
+                </div>
+                <h3>Gerenciar Serviços Rápidos</h3>
+                <button class="btn btn-primary" id="add-servico-rapido-btn" style="margin-bottom: 20px;"><i class="fas fa-plus"></i> Adicionar Serviço Rápido</button>
+                 <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Descrição</th>
+                                <th>Mão de Obra</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servicos-rapidos-table"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Modais -->
+    <!-- Modal Cliente -->
+    <div id="cliente-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3 id="cliente-modal-title">Adicionar Cliente</h3>
+            <form id="cliente-form">
+                <input type="hidden" id="cliente-id">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="cliente-nome">Nome Completo</label>
+                        <input type="text" id="cliente-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cliente-cpf">CPF</label>
+                        <input type="text" id="cliente-cpf" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="cliente-telefone">Telefone</label>
+                        <input type="tel" id="cliente-telefone" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="cliente-email">E-mail</label>
+                        <input type="email" id="cliente-email" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="cliente-endereco">Endereço</label>
+                        <input type="text" id="cliente-endereco" required>
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="cliente-segmento">Segmento</label>
+                    <select id="cliente-segmento" required>
+                        <option value="Automotivo">Automotivo</option>
+                        <option value="Industrial">Industrial</option>
+                        <option value="Ambos">Ambos</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Veículo -->
+    <div id="veiculo-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3 id="veiculo-modal-title">Adicionar Veículo</h3>
+            <form id="veiculo-form">
+                <input type="hidden" id="veiculo-id">
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="form-group">
+                        <label for="veiculo-placa">Placa</label>
+                        <input type="text" id="veiculo-placa" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="veiculo-marca">Marca</label>
+                        <input type="text" id="veiculo-marca" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="veiculo-modelo">Modelo</label>
+                        <input type="text" id="veiculo-modelo" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="veiculo-ano">Ano</label>
+                        <input type="number" id="veiculo-ano" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="veiculo-quilometragem">Quilometragem</label>
+                        <input type="number" id="veiculo-quilometragem" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="veiculo-status">Status</label>
+                         <select id="veiculo-status" required>
+                            <option value="Na oficina">Na oficina</option>
+                            <option value="Em manutenção">Em manutenção</option>
+                            <option value="Aguardando peça">Aguardando peça</option>
+                            <option value="Finalizado">Finalizado</option>
+                        </select>
+                    </div>
+                </div>
+                 <div class="form-group full-width">
+                    <label for="veiculo-proprietario">Proprietário</label>
+                    <select id="veiculo-proprietario" required></select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Projeto -->
+    <div id="projeto-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3 id="projeto-modal-title">Adicionar Projeto</h3>
+            <form id="projeto-form">
+                <input type="hidden" id="projeto-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="projeto-nome">Nome do Projeto</label>
+                        <input type="text" id="projeto-nome" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="projeto-cliente">Cliente</label>
+                        <select id="projeto-cliente" required></select>
+                    </div>
+                     <div class="form-group">
+                        <label for="projeto-prazo">Prazo</label>
+                        <input type="date" id="projeto-prazo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="projeto-valor">Valor (R$)</label>
+                        <input type="number" step="0.01" id="projeto-valor" required>
+                    </div>
+                </div>
+                 <div class="form-group full-width">
+                    <label for="projeto-descricao">Descrição</label>
+                    <textarea id="projeto-descricao" rows="3"></textarea>
+                </div>
+                 <div class="form-group full-width">
+                    <label for="projeto-status">Status</label>
+                    <select id="projeto-status" required>
+                        <option value="Planejamento">Planejamento</option>
+                        <option value="Em andamento">Em andamento</option>
+                        <option value="Pausado">Pausado</option>
+                        <option value="Concluído">Concluído</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Peça -->
+    <div id="peca-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3 id="peca-modal-title">Adicionar Peça</h3>
+            <form id="peca-form">
+                <input type="hidden" id="peca-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="peca-nome">Nome da Peça</label>
+                        <input type="text" id="peca-nome" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="peca-marca">Marca</label>
+                        <input type="text" id="peca-marca">
+                    </div>
+                    <div class="form-group">
+                        <label for="peca-preco">Preço (R$)</label>
+                        <input type="number" step="0.01" id="peca-preco" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="peca-unidade">Unidade</label>
+                        <select id="peca-unidade" required>
+                            <option value="unidade">Unidade (un)</option>
+                            <option value="litro">Litro (L)</option>
+                            <option value="metro">Metro (m)</option>
+                            <option value="jogo">Jogo (jg)</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="peca-fornecedor">Fornecedor</label>
+                        <select id="peca-fornecedor"></select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar Peça</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Fornecedor -->
+    <div id="fornecedor-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3 id="fornecedor-modal-title">Adicionar Fornecedor</h3>
+            <form id="fornecedor-form">
+                <input type="hidden" id="fornecedor-id">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="fornecedor-nome">Nome do Fornecedor</label>
+                        <input type="text" id="fornecedor-nome" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="fornecedor-telefone">Telefone</label>
+                        <input type="tel" id="fornecedor-telefone">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="fornecedor-endereco">Endereço</label>
+                        <input type="text" id="fornecedor-endereco">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Ferramenta -->
+    <div id="ferramenta-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3 id="ferramenta-modal-title">Adicionar Ferramenta</h3>
+            <form id="ferramenta-form">
+                <input type="hidden" id="ferramenta-id">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="ferramenta-nome">Nome</label>
+                        <input type="text" id="ferramenta-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ferramenta-tipo">Tipo</label>
+                        <select id="ferramenta-tipo">
+                            <option value="Ferramenta Manual">Ferramenta Manual</option>
+                            <option value="Equipamento Elétrico">Equipamento Elétrico</option>
+                            <option value="Consumível">Consumível</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ferramenta-localizacao">Localização</label>
+                        <input type="text" id="ferramenta-localizacao">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="ferramenta-obs">Observações</label>
+                        <textarea id="ferramenta-obs" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Detalhes Fornecedor -->
+    <div id="fornecedor-detalhes-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3 id="fornecedor-detalhes-title">Detalhes do Fornecedor</h3>
+             <div class="details-grid" style="grid-template-columns: 1fr;">
+                <div class="detail-item"><strong>Nome</strong><span id="detalhe-fornecedor-nome"></span></div>
+                <div class="detail-item"><strong>Telefone</strong><span id="detalhe-fornecedor-telefone"></span></div>
+                <div class="detail-item"><strong>Endereço</strong><span id="detalhe-fornecedor-endereco"></span></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Serviço -->
+    <div id="servico-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-btn">&times;</span>
+            <h3>Adicionar Manutenção/Serviço</h3>
+            
+            <div id="servicos-rapidos-container" style="margin-bottom: 20px;">
+                <h4>Serviços Rápidos</h4>
+                <!-- Os botões serão gerados dinamicamente aqui -->
+            </div>
+            
+            <form id="servico-form">
+                <input type="hidden" id="servico-id">
+                <input type="hidden" id="servico-veiculo-id">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="servico-descricao">Descrição do Serviço</label>
+                        <input type="text" id="servico-descricao" required>
+                    </div>
+                </div>
+                
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+                
+                <h4>Peças Utilizadas</h4>
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; align-items: end; gap: 15px;">
+                     <div class="form-group">
+                        <label for="servico-peca-select">Peça</label>
+                        <select id="servico-peca-select"></select>
+                    </div>
+                     <div class="form-group">
+                        <label for="servico-peca-qtd">Quantidade</label>
+                        <input type="number" id="servico-peca-qtd" value="1" min="0.1" step="0.1">
+                    </div>
+                    <button type="button" id="add-peca-servico-btn" class="btn btn-primary">Adicionar</button>
+                </div>
+                <ul id="pecas-selecionadas-lista" class="pecas-lista"></ul>
+
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+                
+                <h4>Ferramentas Necessárias</h4>
+                <ul id="ferramentas-necessarias-lista" class="pecas-lista" style="margin-bottom: 20px;">
+                    <!-- Ferramentas listadas aqui -->
+                </ul>
+
+                <div class="form-grid">
+                     <div class="form-group">
+                        <label for="servico-valor-mao-de-obra">Valor Mão de Obra (R$)</label>
+                        <input type="number" step="0.01" id="servico-valor-mao-de-obra" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="servico-valor-pecas">Valor Peças (R$)</label>
+                        <input type="number" step="0.01" id="servico-valor-pecas" readonly>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar Serviço</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Serviço Rápido (para CRUD) -->
+    <div id="servico-rapido-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-btn">&times;</span>
+            <h3 id="servico-rapido-modal-title">Adicionar Serviço Rápido</h3>
+            <form id="servico-rapido-form">
+                <input type="hidden" id="servico-rapido-id">
+                 <div class="form-grid">
+                     <div class="form-group full-width">
+                        <label for="servico-rapido-nome">Nome do Serviço (para o botão)</label>
+                        <input type="text" id="servico-rapido-nome" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="servico-rapido-descricao">Descrição Padrão</label>
+                        <input type="text" id="servico-rapido-descricao" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="servico-rapido-valor-mao-de-obra">Valor Mão de Obra (R$)</label>
+                        <input type="number" step="0.01" id="servico-rapido-valor-mao-de-obra" required>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+
+                <h4>Peças Padrão</h4>
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; align-items: end; gap: 15px;">
+                     <div class="form-group">
+                        <label for="servico-rapido-peca-select">Peça</label>
+                        <select id="servico-rapido-peca-select"></select>
+                    </div>
+                     <div class="form-group">
+                        <label for="servico-rapido-peca-qtd">Quantidade</label>
+                        <input type="number" id="servico-rapido-peca-qtd" value="1" min="0.1" step="0.1">
+                    </div>
+                    <button type="button" id="add-peca-servico-rapido-btn" class="btn btn-primary">Adicionar Peça</button>
+                </div>
+                <ul id="pecas-servico-rapido-lista" class="pecas-lista"></ul>
+                
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+
+                <h4>Ferramentas Padrão</h4>
+                 <div class="form-grid" style="grid-template-columns: 2fr 1fr; align-items: end; gap: 15px;">
+                     <div class="form-group">
+                        <label for="servico-rapido-ferramenta-select">Ferramenta</label>
+                        <select id="servico-rapido-ferramenta-select"></select>
+                    </div>
+                    <button type="button" id="add-ferramenta-servico-rapido-btn" class="btn btn-primary">Adicionar Ferramenta</button>
+                </div>
+                <ul id="ferramentas-servico-rapido-lista" class="pecas-lista"></ul>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nota de Serviço -->
+    <div id="nota-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-btn">&times;</span>
+            <div id="nota-printable-content">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin-bottom: 20px;">Nota de Serviço</h3>
+                    <div>
+                        <strong>Nº: </strong><span id="nota-id"></span><br>
+                        <strong>Status: </strong><span id="nota-status"></span>
+                    </div>
+                </div>
+                <div id="nota-header" style="display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--primary); padding-bottom: 10px; font-size: 14px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <strong><span id="nota-empresa-nome"></span></strong><br>
+                        <span id="nota-empresa-cnpj"></span><br>
+                        <span id="nota-empresa-endereco"></span><br>
+                        <span id="nota-empresa-telefone"></span> | <span id="nota-empresa-email"></span>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong>CLIENTE:</strong> <span id="nota-cliente-nome"></span><br>
+                        <strong>CPF:</strong> <span id="nota-cliente-cpf"></span><br>
+                        <strong>Endereço:</strong> <span id="nota-cliente-endereco"></span><br>
+                        <strong>Contato:</strong> <span id="nota-cliente-telefone"></span> | <span id="nota-cliente-email"></span>
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <strong>VEÍCULO:</strong> <span id="nota-veiculo-modelo"></span> | 
+                    <strong>PLACA:</strong> <span id="nota-veiculo-placa"></span> |
+                    <strong>KM:</strong> <span id="nota-veiculo-km"></span>
+                </div>
+                <div id="nota-servicos-container">
+                    <!-- Tabela de serviços será inserida aqui via JS -->
+                </div>
+                 <div style="text-align: right; margin-top: 20px; font-size: 1.2em;">
+                    <strong>TOTAL:</strong> <span id="nota-total-geral"></span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="exportar-pdf-btn" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Checklist -->
+    <div id="checklist-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 850px;">
+            <span class="close-btn">&times;</span>
+            <h3 id="checklist-modal-title">Checklist de Entrada de Veículo</h3>
+            <form id="checklist-form">
+                <input type="hidden" id="checklist-id">
+                <input type="hidden" id="checklist-veiculo-id">
+                
+                <h4>Itens Externos</h4>
+                <div class="checklist-grid">
+                    <div class="checklist-item"><input type="checkbox" id="check-farois"> <label for="check-farois">Faróis</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-lanternas"> <label for="check-lanternas">Lanternas</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-retrovisores"> <label for="check-retrovisores">Retrovisores</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-pneus"> <label for="check-pneus">Pneus</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-vidros"> <label for="check-vidros">Vidros</label></div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Avarias (Arranhões, Amassados)</label>
+                    <textarea id="check-avarias" rows="3"></textarea>
+                </div>
+                
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+
+                <h4>Itens Internos</h4>
+                 <div class="checklist-grid">
+                    <div class="checklist-item"><input type="checkbox" id="check-radio"> <label for="check-radio">Rádio/Multimídia</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-tapetes"> <label for="check-tapetes">Tapetes</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-extintor"> <label for="check-extintor">Extintor</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-macaco"> <label for="check-macaco">Macaco/Chave Roda</label></div>
+                    <div class="checklist-item"><input type="checkbox" id="check-triangulo"> <label for="check-triangulo">Triângulo</label></div>
+                </div>
+                 <div class="form-group full-width">
+                    <label>Observações Internas</label>
+                    <textarea id="check-obs-internas" rows="2"></textarea>
+                </div>
+
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+
+                <div class="form-group">
+                    <label for="check-combustivel">Nível de Combustível</label>
+                    <input type="range" id="check-combustivel" min="0" max="100" step="10" value="50">
+                </div>
+                
+                <div class="form-group">
+                    <label>Assinatura do Cliente</label>
+                    <canvas id="signature-canvas" width="400" height="150"></canvas>
+                    <button type="button" id="clear-signature-btn" class="btn" style="background-color: var(--primary); margin-top: 10px;">Limpar Assinatura</button>
+                    <img id="saved-signature-img" class="hidden" style="border: 1px solid var(--primary); border-radius: 8px; margin-top: 10px; max-width: 400px;"/>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" id="checklist-save-btn" class="btn btn-primary">Salvar Checklist</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Importar os módulos do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            onAuthStateChanged, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            onSnapshot, 
+            doc,
+            getDoc,
+            updateDoc, 
+            deleteDoc,
+            query,
+            where,
+            orderBy,
+            Timestamp,
+            limit,
+            writeBatch,
+            arrayUnion,
+            arrayRemove,
+            setDoc
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        
+        // Função de Autenticação do Google
+        function handleAuthClick() {
+            return new Promise((resolve, reject) => {
+                if (!window.tokenClient) {
+                    return reject("Cliente de autenticação não inicializado.");
+                }
+                window.tokenClient.callback = (resp) => {
+                    if (resp.error !== undefined) {
+                        reject(resp);
+                    }
+                    resolve(resp);
+                };
+                
+                if (window.gapi && window.gapi.client && !window.gapi.client.getToken()) {
+                    window.tokenClient.requestAccessToken({prompt: 'consent'});
+                } else {
+                    window.tokenClient.requestAccessToken({prompt: ''});
+                }
+            });
+        }
+        
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCoUHQ0SwXH5QZgm35gWCtcPdAZPl3Xvw",
+            authDomain: "garagem-da686.firebaseapp.com",
+            projectId: "garagem-da686",
+            storageBucket: "garagem-da686.appspot.com",
+            messagingSenderId: "794405215347",
+            appId: "1:794405215347:web:dbe210d32475faf385de06",
+            measurementId: "G-W2CSTR4JWM"
+        };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let currentUserId = null;
+        let servicosUnsubscribe = null;
+        let checklistsUnsubscribe = null;
+        let projetoDetalhesUnsubscribe = null;
+        let pecasSelecionadas = [];
+        let pecasServicoRapido = [];
+        let ferramentasServicoRapido = [];
+        let catalogoPecas = [];
+        let catalogoFerramentas = [];
+        let servicosRapidos = [];
+        let currentProjectId = null; // Para saber em qual projeto adicionar anexo
+        let empresaInfo = {};
+
+        const defaultServicosPadrao = [
+            { nome: 'Troca de Óleo e Filtro', descricao: 'Troca de óleo do motor e filtro de óleo.', maoDeObra: 50.00, pecas: [], ferramentas: [] },
+            { nome: 'Alinhamento e Balanceamento', descricao: 'Alinhamento da suspensão e balanceamento das 4 rodas.', maoDeObra: 120.00, pecas: [], ferramentas: [] },
+            { nome: 'Troca de Pastilhas de Freio', descricao: 'Substituição das pastilhas de freio dianteiras.', maoDeObra: 80.00, pecas: [], ferramentas: [] },
+            { nome: 'Revisão Básica', descricao: 'Verificação de níveis, filtros e itens de segurança.', maoDeObra: 150.00, pecas: [], ferramentas: [] },
+        ];
+
+        // --- Declarações de funções de renderização ---
+        const renderClienteRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.cpf}</td><td>${data.telefone}</td><td>${data.segmento}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+        const renderVeiculoRow = (id, data) => `<tr data-id="${id}" class="clickable-row"><td>${data.placa}</td><td>${data.marca} / ${data.modelo}</td><td>${data.quilometragem ? data.quilometragem.toLocaleString('pt-BR') + ' km' : 'N/A'}</td><td>${data.proprietarioNome}</td><td>${data.status}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+        const renderProjetoRow = (id, data) => `<tr data-id="${id}" class="clickable-row"><td>${data.nome}</td><td>${data.clienteNome}</td><td>${new Date(data.prazo.seconds * 1000).toLocaleDateString()}</td><td>R$ ${data.valor.toFixed(2)}</td><td>${data.status}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+        const renderPecaRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.marca || 'N/A'}</td><td><span class="fornecedor-link" data-id="${data.fornecedorId}">${data.fornecedorNome || 'N/A'}</span></td><td>R$ ${data.preco.toFixed(2)}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+        const renderFerramentaRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.tipo}</td><td>${data.localizacao || 'N/A'}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+        const renderFornecedorRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.telefone || 'N/A'}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+        const renderServicoRapidoRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.descricao}</td><td>R$ ${data.maoDeObra.toFixed(2)}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+
+        const renderServicosRapidosButtons = () => {
+            const container = document.getElementById('servicos-rapidos-container');
+            if(!container) return;
+            const h4 = container.querySelector('h4');
+            container.innerHTML = '';
+            if(h4) container.appendChild(h4);
+
+            servicosRapidos.forEach(servico => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'servico-rapido-btn';
+                btn.textContent = servico.nome;
+                btn.addEventListener('click', () => preencherServicoFormComRapido(servico));
+                container.appendChild(btn);
+            });
+        };
+
+        function renderPecasList() {
+            const listaUI = document.getElementById('pecas-selecionadas-lista');
+            let totalPecas = 0;
+            listaUI.innerHTML = '';
+
+            pecasSelecionadas.forEach((peca, index) => {
+                const itemTotal = peca.quantidade * peca.precoUnitario;
+                totalPecas += itemTotal;
+                listaUI.innerHTML += `<li><span>${peca.quantidade} ${peca.unidade}(s) de ${peca.nome}</span><span>R$ ${itemTotal.toFixed(2)}</span><button type="button" class="remover-peca-btn" data-index="${index}"><i class="fas fa-times"></i></button></li>`;
+            });
+            document.getElementById('servico-valor-pecas').value = totalPecas.toFixed(2);
+            
+            listaUI.querySelectorAll('.remover-peca-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    pecasSelecionadas.splice(e.currentTarget.dataset.index, 1);
+                    renderPecasList();
+                });
+            });
+        }
+
+        function renderPecasServicoRapidoList() {
+            const listaUI = document.getElementById('pecas-servico-rapido-lista');
+            listaUI.innerHTML = '';
+
+            pecasServicoRapido.forEach((peca, index) => {
+                const itemTotal = peca.quantidade * peca.precoUnitario;
+                listaUI.innerHTML += `<li><span>${peca.quantidade} ${peca.unidade}(s) de ${peca.nome}</span><span>R$ ${itemTotal.toFixed(2)}</span><button type="button" class="remover-peca-btn" data-index="${index}"><i class="fas fa-times"></i></button></li>`;
+            });
+            
+            listaUI.querySelectorAll('.remover-peca-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    pecasServicoRapido.splice(e.currentTarget.dataset.index, 1);
+                    renderPecasServicoRapidoList();
+                });
+            });
+        }
+        
+        function renderFerramentasServicoRapidoList() {
+            const listaUI = document.getElementById('ferramentas-servico-rapido-lista');
+            listaUI.innerHTML = '';
+            ferramentasServicoRapido.forEach((ferramenta, index) => {
+                listaUI.innerHTML += `<li><span>${ferramenta.nome}</span><button type="button" class="remover-peca-btn" data-index="${index}"><i class="fas fa-times"></i></button></li>`;
+            });
+            listaUI.querySelectorAll('.remover-peca-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    ferramentasServicoRapido.splice(e.currentTarget.dataset.index, 1);
+                    renderFerramentasServicoRapidoList();
+                });
+            });
+        }
+
+
+        // --- LÓGICA DE AUTENTICAÇÃO ---
+        const loginView = document.getElementById('login-view');
+        const registerView = document.getElementById('register-view');
+        const mainApp = document.getElementById('main-app');
+        
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                loginView.classList.add('hidden');
+                registerView.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                mainApp.style.display = 'flex';
+                setupListeners();
+            } else {
+                currentUserId = null;
+                mainApp.classList.add('hidden');
+                loginView.classList.remove('hidden');
+                registerView.classList.add('hidden');
+            }
+        });
+        
+        // --- NAVEGAÇÃO ENTRE TELAS DE AUTH ---
+        document.getElementById('show-register').addEventListener('click', () => {
+            loginView.classList.add('hidden');
+            registerView.classList.remove('hidden');
+        });
+        document.getElementById('show-login').addEventListener('click', () => {
+            registerView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+        });
+
+        // --- FORMULÁRIOS DE AUTH ---
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            signInWithEmailAndPassword(auth, email, password)
+                .catch(error => {
+                    document.getElementById('auth-error').textContent = "E-mail ou senha inválidos.";
+                });
+        });
+        
+        document.getElementById('register-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            createUserWithEmailAndPassword(auth, email, password)
+                .catch(error => {
+                    document.getElementById('register-error').textContent = "Erro ao registrar. Tente novamente.";
+                });
+        });
+
+        // --- LOGOUT ---
+        document.getElementById('logout-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            if(window.gapi && gapi.client && gapi.client.getToken()) {
+                const token = gapi.client.getToken();
+                if (token) {
+                    google.accounts.oauth2.revoke(token.access_token, () => {
+                        console.log('Token revogado.');
+                    });
+                }
+                gapi.client.setToken(null);
+            }
+            signOut(auth);
+        });
+
+        // --- NAVEGAÇÃO PRINCIPAL ---
+        const navLinks = document.querySelectorAll('.nav-link');
+        const contentSections = document.querySelectorAll('.content-section');
+
+        function navigateTo(targetId) {
+            navLinks.forEach(l => l.classList.remove('active'));
+            const activeLink = document.querySelector(`.nav-link[data-target="${targetId}"]`);
+            if(activeLink) activeLink.classList.add('active');
+
+            contentSections.forEach(section => {
+                if (section.id === `${targetId}-section`) {
+                    section.classList.add('active');
+                } else {
+                    section.classList.remove('active');
+                }
+            });
+             if (servicosUnsubscribe) { servicosUnsubscribe(); servicosUnsubscribe = null; }
+             if (checklistsUnsubscribe) { checklistsUnsubscribe(); checklistsUnsubscribe = null; }
+             if (projetoDetalhesUnsubscribe) { projetoDetalhesUnsubscribe(); projetoDetalhesUnsubscribe = null; }
+        }
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('data-target');
+                navigateTo(targetId);
+            });
+        });
+        
+        document.getElementById('voltar-automotivo-btn').addEventListener('click', () => navigateTo('automotivo'));
+        document.getElementById('voltar-industrial-btn').addEventListener('click', () => navigateTo('industrial'));
+
+        
+        // --- LÓGICA DE MODAIS ---
+        const modals = document.querySelectorAll('.modal');
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            const form = document.getElementById(modalId).querySelector('form');
+            if (form) form.reset();
+        }
+        modals.forEach(modal => {
+            const closeBtn = modal.querySelector('.close-btn');
+            if(closeBtn) {
+                closeBtn.addEventListener('click', () => closeModal(modal.id));
+            }
+        });
+        
+        // --- MANIPULADORES DE EVENTOS PARA ABRIR MODAIS ---
+        document.getElementById('add-cliente-btn').addEventListener('click', () => {
+             document.getElementById('cliente-modal-title').textContent = "Adicionar Cliente";
+             document.getElementById('cliente-form').reset();
+             document.getElementById('cliente-id').value = '';
+             openModal('cliente-modal');
+        });
+        document.getElementById('add-veiculo-btn').addEventListener('click', () => {
+             document.getElementById('veiculo-modal-title').textContent = "Adicionar Veículo";
+             document.getElementById('veiculo-form').reset();
+             document.getElementById('veiculo-id').value = '';
+             populateClientesSelect('veiculo-proprietario');
+             openModal('veiculo-modal');
+        });
+        document.getElementById('add-projeto-btn').addEventListener('click', () => {
+             document.getElementById('projeto-modal-title').textContent = "Adicionar Projeto";
+             document.getElementById('projeto-form').reset();
+             document.getElementById('projeto-id').value = '';
+             populateClientesSelect('projeto-cliente', 'Industrial');
+             openModal('projeto-modal');
+        });
+
+        document.getElementById('abrir-servico-modal-btn').addEventListener('click', () => {
+            document.getElementById('servico-form').reset();
+            document.getElementById('servico-id').value = '';
+            pecasSelecionadas = [];
+            renderPecasList();
+            document.getElementById('ferramentas-necessarias-lista').innerHTML = '';
+            populatePecasSelect('servico-peca-select');
+            openModal('servico-modal');
+        });
+
+        document.getElementById('add-peca-btn').addEventListener('click', () => {
+             document.getElementById('peca-modal-title').textContent = "Adicionar Peça";
+             document.getElementById('peca-form').reset();
+             document.getElementById('peca-id').value = '';
+             populateFornecedoresSelect('peca-fornecedor');
+             openModal('peca-modal');
+        });
+        
+        document.getElementById('add-fornecedor-btn').addEventListener('click', () => {
+             document.getElementById('fornecedor-modal-title').textContent = "Adicionar Fornecedor";
+             document.getElementById('fornecedor-form').reset();
+             document.getElementById('fornecedor-id').value = '';
+             openModal('fornecedor-modal');
+        });
+
+        document.getElementById('add-ferramenta-btn').addEventListener('click', () => {
+             document.getElementById('ferramenta-modal-title').textContent = "Adicionar Ferramenta";
+             document.getElementById('ferramenta-form').reset();
+             document.getElementById('ferramenta-id').value = '';
+             openModal('ferramenta-modal');
+        });
+
+        document.getElementById('add-servico-rapido-btn').addEventListener('click', () => {
+            document.getElementById('servico-rapido-modal-title').textContent = "Adicionar Serviço Rápido";
+            document.getElementById('servico-rapido-form').reset();
+            document.getElementById('servico-rapido-id').value = '';
+            pecasServicoRapido = [];
+            ferramentasServicoRapido = [];
+            renderPecasServicoRapidoList();
+            renderFerramentasServicoRapidoList();
+            populatePecasSelect('servico-rapido-peca-select');
+            populateFerramentasSelect('servico-rapido-ferramenta-select');
+            openModal('servico-rapido-modal');
+        });
+
+        async function populateClientesSelect(selectId, segmento = 'Automotivo') {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Selecione...</option>';
+            const q = query(collection(db, `users/${currentUserId}/clientes`), where('segmento', 'in', [segmento, 'Ambos']));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach(doc => {
+                const cliente = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = cliente.nome;
+                select.appendChild(option);
+            });
+        }
+
+        async function populateFornecedoresSelect(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Nenhum</option>';
+            const q = query(collection(db, `users/${currentUserId}/fornecedores`), orderBy("nome"));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach(doc => {
+                const fornecedor = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = fornecedor.nome;
+                select.appendChild(option);
+            });
+        }
+
+        function populatePecasSelect(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Selecione uma peça...</option>';
+            catalogoPecas.forEach(peca => {
+                 const option = document.createElement('option');
+                option.value = peca.id;
+                option.textContent = `${peca.nome} (R$ ${peca.preco.toFixed(2)}/${peca.unidade})`;
+                select.appendChild(option);
+            });
+        }
+        
+        function populateFerramentasSelect(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Selecione...</option>';
+            catalogoFerramentas.forEach(ferramenta => {
+                 const option = document.createElement('option');
+                option.value = ferramenta.id;
+                option.textContent = `${ferramenta.nome} (${ferramenta.tipo})`;
+                select.appendChild(option);
+            });
+        }
+
+        // --- CRUDs ---
+        const clienteForm = document.getElementById('cliente-form');
+        clienteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('cliente-id').value;
+            const cpf = document.getElementById('cliente-cpf').value.replace(/\D/g, '');
+            const data = {
+                nome: document.getElementById('cliente-nome').value,
+                cpf: cpf,
+                telefone: document.getElementById('cliente-telefone').value,
+                email: document.getElementById('cliente-email').value,
+                endereco: document.getElementById('cliente-endereco').value,
+                segmento: document.getElementById('cliente-segmento').value,
+                createdAt: Timestamp.now()
+            };
+            
+            let docId = id;
+            if (id) {
+                await updateDoc(doc(db, `users/${currentUserId}/clientes`, id), data);
+            } else {
+                const docRef = await addDoc(collection(db, `users/${currentUserId}/clientes`), data);
+                docId = docRef.id;
+            }
+
+            // Create/update client index for portal login
+            await setDoc(doc(db, `client_index`, cpf), {
+                userId: currentUserId,
+                clienteId: docId
+            });
+
+            closeModal('cliente-modal');
+        });
+        
+        const veiculoForm = document.getElementById('veiculo-form');
+        if (veiculoForm) {
+            veiculoForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('veiculo-id').value;
+                const proprietarioSelect = document.getElementById('veiculo-proprietario');
+                const data = {
+                    placa: document.getElementById('veiculo-placa').value.toUpperCase(),
+                    marca: document.getElementById('veiculo-marca').value,
+                    modelo: document.getElementById('veiculo-modelo').value,
+                    ano: document.getElementById('veiculo-ano').value,
+                    quilometragem: parseInt(document.getElementById('veiculo-quilometragem').value, 10),
+                    proprietarioId: proprietarioSelect.value,
+                    proprietarioNome: proprietarioSelect.options[proprietarioSelect.selectedIndex].text,
+                    status: document.getElementById('veiculo-status').value,
+                    createdAt: Timestamp.now()
+                };
+
+                if (id) {
+                    await updateDoc(doc(db, `users/${currentUserId}/veiculos`, id), data);
+                } else {
+                    await addDoc(collection(db, `users/${currentUserId}/veiculos`), data);
+                }
+                closeModal('veiculo-modal');
+            });
+        }
+
+        const projetoForm = document.getElementById('projeto-form');
+        if(projetoForm) {
+            projetoForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('projeto-id').value;
+                const clienteSelect = document.getElementById('projeto-cliente');
+
+                const data = {
+                    nome: document.getElementById('projeto-nome').value,
+                    clienteId: clienteSelect.value,
+                    clienteNome: clienteSelect.options[clienteSelect.selectedIndex].text,
+                    prazo: Timestamp.fromDate(new Date(document.getElementById('projeto-prazo').value)),
+                    valor: parseFloat(document.getElementById('projeto-valor').value),
+                    descricao: document.getElementById('projeto-descricao').value,
+                    status: document.getElementById('projeto-status').value,
+                    createdAt: Timestamp.now()
+                };
+
+                if (id) {
+                    const docExistente = await getDoc(doc(db, `users/${currentUserId}/projetos`, id));
+                    const dadosAtuais = docExistente.data();
+                    if (docExistente.exists()) {
+                        data.documentos = dadosAtuais.documentos || [];
+                        data.projetos3d = dadosAtuais.projetos3d || [];
+                        data.objetivos = dadosAtuais.objetivos || [];
+                    }
+                    await updateDoc(doc(db, `users/${currentUserId}/projetos`, id), data);
+                } else {
+                    data.documentos = [];
+                    data.projetos3d = [];
+                    data.objetivos = [];
+                    await addDoc(collection(db, `users/${currentUserId}/projetos`), data);
+                }
+                closeModal('projeto-modal');
+            });
+        }
+
+        const servicoForm = document.getElementById('servico-form');
+        servicoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const veiculoId = document.getElementById('servico-veiculo-id').value;
+            const valorMaoDeObra = parseFloat(document.getElementById('servico-valor-mao-de-obra').value) || 0;
+            const valorPecas = parseFloat(document.getElementById('servico-valor-pecas').value) || 0;
+
+            const data = {
+                descricao: document.getElementById('servico-descricao').value,
+                pecas: pecasSelecionadas,
+                valorMaoDeObra: valorMaoDeObra,
+                valorPecas: valorPecas,
+                valorTotal: valorMaoDeObra + valorPecas,
+                createdAt: Timestamp.now()
+            };
+
+            await addDoc(collection(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`), data);
+            closeModal('servico-modal');
+            servicoForm.reset();
+        });
+        
+        const pecaForm = document.getElementById('peca-form');
+        pecaForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('peca-id').value;
+            const fornecedorSelect = document.getElementById('peca-fornecedor');
+            const data = {
+                nome: document.getElementById('peca-nome').value,
+                marca: document.getElementById('peca-marca').value,
+                preco: parseFloat(document.getElementById('peca-preco').value),
+                unidade: document.getElementById('peca-unidade').value,
+                fornecedorId: fornecedorSelect.value,
+                fornecedorNome: fornecedorSelect.selectedIndex > 0 ? fornecedorSelect.options[fornecedorSelect.selectedIndex].text : "N/A",
+            };
+
+             if (id) {
+                await updateDoc(doc(db, `users/${currentUserId}/pecas`, id), data);
+            } else {
+                await addDoc(collection(db, `users/${currentUserId}/pecas`), data);
+            }
+            closeModal('peca-modal');
+        });
+        
+        const fornecedorForm = document.getElementById('fornecedor-form');
+        fornecedorForm.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const id = document.getElementById('fornecedor-id').value;
+            const data = {
+                nome: document.getElementById('fornecedor-nome').value,
+                telefone: document.getElementById('fornecedor-telefone').value,
+                endereco: document.getElementById('fornecedor-endereco').value,
+            };
+            if(id) {
+                await updateDoc(doc(db, `users/${currentUserId}/fornecedores`, id), data);
+            } else {
+                await addDoc(collection(db, `users/${currentUserId}/fornecedores`), data);
+            }
+            closeModal('fornecedor-modal');
+        });
+
+        const ferramentaForm = document.getElementById('ferramenta-form');
+        ferramentaForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('ferramenta-id').value;
+            const data = {
+                nome: document.getElementById('ferramenta-nome').value,
+                tipo: document.getElementById('ferramenta-tipo').value,
+                localizacao: document.getElementById('ferramenta-localizacao').value,
+                obs: document.getElementById('ferramenta-obs').value
+            };
+            if(id) {
+                await updateDoc(doc(db, `users/${currentUserId}/ferramentas`, id), data);
+            } else {
+                await addDoc(collection(db, `users/${currentUserId}/ferramentas`), data);
+            }
+            closeModal('ferramenta-modal');
+        });
+
+        const servicoRapidoForm = document.getElementById('servico-rapido-form');
+        servicoRapidoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('servico-rapido-id').value;
+            const data = {
+                nome: document.getElementById('servico-rapido-nome').value,
+                descricao: document.getElementById('servico-rapido-descricao').value,
+                maoDeObra: parseFloat(document.getElementById('servico-rapido-valor-mao-de-obra').value),
+                pecas: pecasServicoRapido,
+                ferramentas: ferramentasServicoRapido
+            };
+
+            if (id) {
+                await updateDoc(doc(db, `users/${currentUserId}/servicosPadrao`, id), data);
+            } else {
+                await addDoc(collection(db, `users/${currentUserId}/servicosPadrao`), data);
+            }
+            closeModal('servico-rapido-modal');
+        });
+        
+        // --- LISTENERS E RENDERIZAÇÃO ---
+        function setupListeners() {
+            onSnapshot(query(collection(db, `users/${currentUserId}/clientes`), orderBy("nome")), 
+                (snap) => renderTable(snap, 'clientes-table', renderClienteRow, [['.edit-btn', editCliente], ['.delete-btn', deleteCliente]]));
+                
+            onSnapshot(query(collection(db, `users/${currentUserId}/fornecedores`), orderBy("nome")), 
+                (snap) => renderTable(snap, 'fornecedores-table', renderFornecedorRow, [['.edit-btn', editFornecedor], ['.delete-btn', deleteFornecedor]]));
+
+            onSnapshot(query(collection(db, `users/${currentUserId}/ferramentas`), orderBy("nome")), 
+                (snap) => {
+                    catalogoFerramentas = [];
+                    snap.forEach(doc => catalogoFerramentas.push({ id: doc.id, ...doc.data() }));
+                    renderTable(snap, 'ferramentas-table', renderFerramentaRow, [['.edit-btn', editFerramenta], ['.delete-btn', deleteFerramenta]]);
+                });
+
+            onSnapshot(query(collection(db, `users/${currentUserId}/veiculos`), orderBy("placa")), 
+                (snap) => renderTable(snap, 'veiculos-table', renderVeiculoRow, [['.edit-btn', editVeiculo], ['.delete-btn', deleteVeiculo]], true));
+            
+            onSnapshot(query(collection(db, `users/${currentUserId}/projetos`), orderBy("prazo")), 
+                (snap) => renderTable(snap, 'projetos-table', renderProjetoRow, [['.edit-btn', editProjeto], ['.delete-btn', deleteProjeto]], true));
+                 
+            onSnapshot(query(collection(db, `users/${currentUserId}/pecas`), orderBy("nome")), 
+                (snap) => {
+                    catalogoPecas = [];
+                    snap.forEach(doc => catalogoPecas.push({ id: doc.id, ...doc.data() }));
+                    renderTable(snap, 'pecas-table', renderPecaRow, [['.edit-btn', editPeca], ['.delete-btn', deletePeca], ['.fornecedor-link', (id) => showFornecedorDetails(id)]]);
+                });
+                
+            onSnapshot(query(collection(db, `users/${currentUserId}/notas`), orderBy("createdAt", "desc")),
+                (snap) => renderTable(snap, 'notas-table', renderNotaRow, []));
+
+            const servicosPadraoQuery = query(collection(db, `users/${currentUserId}/servicosPadrao`), orderBy("nome"));
+            onSnapshot(servicosPadraoQuery, (snapshot) => {
+                servicosRapidos = [];
+                snapshot.forEach(doc => servicosRapidos.push({ id: doc.id, ...doc.data()}));
+                
+                if (snapshot.empty) {
+                    // Populate with defaults if it's the first time
+                    const batch = writeBatch(db);
+                    defaultServicosPadrao.forEach(servico => {
+                        const docRef = doc(collection(db, `users/${currentUserId}/servicosPadrao`));
+                        batch.set(docRef, servico);
+                    });
+                    batch.commit();
+                } else {
+                    renderTable(snapshot, 'servicos-rapidos-table', renderServicoRapidoRow, [['.edit-btn', editServicoRapido], ['.delete-btn', deleteServicoRapido]]);
+                    renderServicosRapidosButtons();
+                }
+            });
+
+            setupSearchListeners();
+            setupNotaListeners();
+            setupEmpresaInfoListener();
+            setupObjetivosListeners();
+            setupChecklistListeners();
+            onSnapshot(collection(db, `users/${currentUserId}/veiculos`), updateDashboard);
+            onSnapshot(collection(db, `users/${currentUserId}/projetos`), updateDashboard);
+            onSnapshot(collection(db, `users/${currentUserId}/notas`), updateDashboard);
+            setupDriveListeners();
+        }
+        
+        function renderTable(snapshot, tableId, rowRenderer, eventHandlers, isClickable = false) {
+            const tableBody = document.getElementById(tableId);
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+            snapshot.forEach(doc => {
+                tableBody.innerHTML += rowRenderer(doc.id, doc.data());
+            });
+            eventHandlers.forEach(([selector, handler]) => {
+                tableBody.querySelectorAll(selector).forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        handler(btn.dataset.id)
+                    });
+                });
+            });
+            if (isClickable) {
+                tableBody.querySelectorAll('tr').forEach(row => {
+                    const targetPage = tableId.includes('veiculo') ? showVehicleDetails : showProjectDetails;
+                    row.addEventListener('click', () => targetPage(row.dataset.id));
+                });
+            }
+        }
+        
+        // --- FUNÇÕES DE EDIÇÃO E DELEÇÃO ---
+        async function getDocument(collectionName, id, subcollection) {
+            let path;
+            if(subcollection){
+                path = `users/${currentUserId}/${collectionName}/${id}/${subcollection.name}/${subcollection.id}`;
+            } else {
+                 path = `users/${currentUserId}/${collectionName}/${id}`;
+            }
+            const docRef = doc(db, path);
+            const docSnap = await getDoc(docRef);
+            return docSnap.exists() ? docSnap.data() : null;
+        }
+
+        async function editCliente(id) {
+            const data = await getDocument('clientes', id);
+            if (!data) return;
+            document.getElementById('cliente-modal-title').textContent = "Editar Cliente";
+            document.getElementById('cliente-id').value = id;
+            document.getElementById('cliente-nome').value = data.nome;
+            document.getElementById('cliente-cpf').value = data.cpf;
+            document.getElementById('cliente-telefone').value = data.telefone;
+            document.getElementById('cliente-email').value = data.email;
+            document.getElementById('cliente-endereco').value = data.endereco;
+            document.getElementById('cliente-segmento').value = data.segmento;
+            openModal('cliente-modal');
+        }
+        
+        async function editFornecedor(id) {
+            const data = await getDocument('fornecedores', id);
+            if (!data) return;
+            document.getElementById('fornecedor-modal-title').textContent = "Editar Fornecedor";
+            document.getElementById('fornecedor-id').value = id;
+            document.getElementById('fornecedor-nome').value = data.nome;
+            document.getElementById('fornecedor-telefone').value = data.telefone;
+            document.getElementById('fornecedor-endereco').value = data.endereco;
+            openModal('fornecedor-modal');
+        }
+
+        async function editFerramenta(id) {
+            const data = await getDocument('ferramentas', id);
+            if(!data) return;
+            document.getElementById('ferramenta-modal-title').textContent = "Editar Ferramenta";
+            document.getElementById('ferramenta-id').value = id;
+            document.getElementById('ferramenta-nome').value = data.nome;
+            document.getElementById('ferramenta-tipo').value = data.tipo;
+            document.getElementById('ferramenta-localizacao').value = data.localizacao;
+            document.getElementById('ferramenta-obs').value = data.obs;
+            openModal('ferramenta-modal');
+        }
+
+        async function editVeiculo(id) { 
+            const data = await getDocument('veiculos', id);
+            if(!data) return;
+            document.getElementById('veiculo-modal-title').textContent = "Editar Veículo";
+            document.getElementById('veiculo-id').value = id;
+            document.getElementById('veiculo-placa').value = data.placa;
+            document.getElementById('veiculo-marca').value = data.marca;
+            document.getElementById('veiculo-modelo').value = data.modelo;
+            document.getElementById('veiculo-ano').value = data.ano;
+            document.getElementById('veiculo-quilometragem').value = data.quilometragem;
+            document.getElementById('veiculo-status').value = data.status;
+            await populateClientesSelect('veiculo-proprietario');
+            document.getElementById('veiculo-proprietario').value = data.proprietarioId;
+            openModal('veiculo-modal');
+        }
+        async function editProjeto(id) {
+            const data = await getDocument('projetos', id);
+            if (!data) return;
+            document.getElementById('projeto-modal-title').textContent = "Editar Projeto";
+            document.getElementById('projeto-id').value = id;
+            document.getElementById('projeto-nome').value = data.nome;
+            await populateClientesSelect('projeto-cliente', 'Industrial');
+            document.getElementById('projeto-cliente').value = data.clienteId;
+            document.getElementById('projeto-prazo').valueAsDate = new Date(data.prazo.seconds * 1000);
+            document.getElementById('projeto-valor').value = data.valor;
+            document.getElementById('projeto-descricao').value = data.descricao;
+            document.getElementById('projeto-status').value = data.status;
+            openModal('projeto-modal');
+        }
+
+        async function editPeca(id) {
+            const data = await getDocument('pecas', id);
+            if(!data) return;
+            document.getElementById('peca-modal-title').textContent = "Editar Peça";
+            document.getElementById('peca-id').value = id;
+            document.getElementById('peca-nome').value = data.nome;
+            document.getElementById('peca-marca').value = data.marca;
+            document.getElementById('peca-preco').value = data.preco;
+            document.getElementById('peca-unidade').value = data.unidade;
+            await populateFornecedoresSelect('peca-fornecedor');
+            document.getElementById('peca-fornecedor').value = data.fornecedorId;
+            openModal('peca-modal');
+        }
+
+        async function editServicoRapido(id) {
+            const data = await getDocument('servicosPadrao', id);
+            if (!data) return;
+            document.getElementById('servico-rapido-modal-title').textContent = "Editar Serviço Rápido";
+            document.getElementById('servico-rapido-id').value = id;
+            document.getElementById('servico-rapido-nome').value = data.nome;
+            document.getElementById('servico-rapido-descricao').value = data.descricao;
+            document.getElementById('servico-rapido-valor-mao-de-obra').value = data.maoDeObra;
+            
+            pecasServicoRapido = Array.isArray(data.pecas) ? data.pecas : [];
+            ferramentasServicoRapido = Array.isArray(data.ferramentas) ? data.ferramentas : [];
+            
+            populatePecasSelect('servico-rapido-peca-select');
+            populateFerramentasSelect('servico-rapido-ferramenta-select');
+            renderPecasServicoRapidoList();
+            renderFerramentasServicoRapidoList();
+
+            openModal('servico-rapido-modal');
+        }
+
+        async function deleteCliente(id) { await deleteDoc(doc(db, `users/${currentUserId}/clientes`, id)); }
+        async function deleteFornecedor(id) { await deleteDoc(doc(db, `users/${currentUserId}/fornecedores`, id)); }
+        async function deleteFerramenta(id) { await deleteDoc(doc(db, `users/${currentUserId}/ferramentas`, id)); }
+        async function deleteVeiculo(id) { await deleteDoc(doc(db, `users/${currentUserId}/veiculos`, id)); }
+        async function deleteProjeto(id) { await deleteDoc(doc(db, `users/${currentUserId}/projetos`, id)); }
+        async function deletePeca(id) { await deleteDoc(doc(db, `users/${currentUserId}/pecas`, id)); }
+        async function deleteServico(veiculoId, servicoId) { await deleteDoc(doc(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`, servicoId)); }
+        async function deleteServicoRapido(id) { await deleteDoc(doc(db, `users/${currentUserId}/servicosPadrao`, id)); }
+        
+        // --- DETALHES (VEÍCULO E PROJETO) ---
+        async function showVehicleDetails(veiculoId) {
+             const veiculo = await getDocument('veiculos', veiculoId);
+            if (!veiculo) return;
+
+            navigateTo('veiculo-detalhes');
+            
+            document.getElementById('veiculo-detalhe-titulo').textContent = `${veiculo.marca} ${veiculo.modelo} - ${veiculo.placa}`;
+            document.getElementById('detalhe-placa').textContent = veiculo.placa;
+            document.getElementById('detalhe-marca-modelo').textContent = `${veiculo.marca} / ${veiculo.modelo}`;
+            document.getElementById('detalhe-ano').textContent = veiculo.ano;
+            document.getElementById('detalhe-quilometragem').textContent = `${veiculo.quilometragem ? veiculo.quilometragem.toLocaleString('pt-BR') : 'N/A'} km`;
+            document.getElementById('detalhe-proprietario').textContent = veiculo.proprietarioNome;
+            document.getElementById('servico-veiculo-id').value = veiculoId;
+            document.getElementById('checklist-veiculo-id').value = veiculoId;
+
+            const qServicos = query(collection(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`), orderBy("createdAt", "desc"));
+            if(servicosUnsubscribe) servicosUnsubscribe();
+            servicosUnsubscribe = onSnapshot(qServicos, (snapshot) => {
+                const tableBody = document.getElementById('servicos-table');
+                tableBody.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const servico = doc.data();
+                    let pecasHtml = 'N/A';
+                    if (Array.isArray(servico.pecas) && servico.pecas.length > 0) {
+                        pecasHtml = servico.pecas.map(p => `${p.quantidade}x ${p.nome}`).join('<br>');
+                    }
+
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td><input type="checkbox" class="servico-checkbox" data-id="${doc.id}"></td>
+                            <td>${new Date(servico.createdAt.seconds * 1000).toLocaleDateString()}</td>
+                            <td>${servico.descricao}</td>
+                            <td>${pecasHtml}</td>
+                            <td>R$ ${servico.valorTotal.toFixed(2)}</td>
+                            <td class="actions-cell">
+                                <button class="delete-btn" onclick="window.deleteServico('${veiculoId}', '${doc.id}')"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+
+            const qChecklists = query(collection(db, `users/${currentUserId}/veiculos/${veiculoId}/checklists`), orderBy("createdAt", "desc"));
+            if(checklistsUnsubscribe) checklistsUnsubscribe();
+            checklistsUnsubscribe = onSnapshot(qChecklists, (snapshot) => {
+                const tableBody = document.getElementById('checklists-table');
+                tableBody.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const checklist = doc.data();
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td>${new Date(checklist.createdAt.seconds * 1000).toLocaleString('pt-BR')}</td>
+                            <td class="actions-cell">
+                                <button class="view-btn" onclick="window.visualizarChecklist('${veiculoId}', '${doc.id}')"><i class="fas fa-eye"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+        window.deleteServico = deleteServico;
+
+        async function showProjectDetails(projectId) {
+            currentProjectId = projectId;
+            navigateTo('projeto-detalhes');
+            
+            const docRef = doc(db, `users/${currentUserId}/projetos`, projectId);
+            
+            if (projetoDetalhesUnsubscribe) projetoDetalhesUnsubscribe();
+
+            projetoDetalhesUnsubscribe = onSnapshot(docRef, (docSnap) => {
+                if (!docSnap.exists()) {
+                    console.error("Projeto não encontrado!");
+                    navigateTo('industrial');
+                    return;
+                }
+                const projeto = docSnap.data();
+
+                document.getElementById('projeto-detalhe-titulo').textContent = projeto.nome;
+                document.getElementById('detalhe-projeto-nome').textContent = projeto.nome;
+                document.getElementById('detalhe-projeto-cliente').textContent = projeto.clienteNome;
+                document.getElementById('detalhe-projeto-prazo').textContent = new Date(projeto.prazo.seconds * 1000).toLocaleDateString();
+                document.getElementById('detalhe-projeto-valor').textContent = `R$ ${projeto.valor.toFixed(2)}`;
+                document.getElementById('detalhe-projeto-descricao').textContent = projeto.descricao;
+
+                renderAnexos(projeto.documentos || [], 'documento');
+                renderAnexos(projeto.projetos3d || [], 'projeto3d');
+                renderObjetivos(projeto.objetivos || [], projectId);
+                
+                updateDriveButtonState();
+            });
+        }
+        
+        async function showFornecedorDetails(fornecedorId) {
+            const data = await getDocument('fornecedores', fornecedorId);
+            if(!data) return;
+            document.getElementById('detalhe-fornecedor-nome').textContent = data.nome;
+            document.getElementById('detalhe-fornecedor-telefone').textContent = data.telefone || 'N/A';
+            document.getElementById('detalhe-fornecedor-endereco').textContent = data.endereco || 'N/A';
+            openModal('fornecedor-detalhes-modal');
+        }
+
+        function renderAnexos(anexos, tipo) {
+            const tableId = tipo === 'documento' ? 'projeto-documentos-table' : 'projeto-projetos3d-table';
+            const tableBody = document.getElementById(tableId);
+            if(!tableBody) return;
+            tableBody.innerHTML = '';
+            anexos.forEach((anexo, index) => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td><a href="${anexo.url}" target="_blank">${anexo.nome}</a></td>
+                        <td class="actions-cell">
+                            <button class="delete-btn" onclick="window.handleDeleteAnexo(event, '${currentProjectId}', ${index}, '${tipo}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        // --- ANEXOS ---
+        window.handleDeleteAnexo = async (event, projectId, index, tipo) => {
+            event.stopPropagation();
+            if (!projectId) return;
+
+            const docRef = doc(db, `users/${currentUserId}/projetos`, projectId);
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) return;
+
+            const projeto = docSnap.data();
+            const anexoArray = tipo === 'documento' ? projeto.documentos : projeto.projetos3d;
+            const anexoToDelete = anexoArray[index];
+
+            if (!anexoToDelete) return;
+
+            try {
+                if (anexoToDelete.fileId) {
+                    await handleAuthClick();
+                    await gapi.client.drive.files.delete({ fileId: anexoToDelete.fileId });
+                }
+
+                const fieldToUpdate = tipo === 'documento' ? 'documentos' : 'projetos3d';
+                await updateDoc(docRef, { [fieldToUpdate]: arrayRemove(anexoToDelete) });
+
+            } catch (error) {
+                console.error("Erro ao deletar anexo:", error);
+                 if (error.result && error.result.error.code === 404) {
+                    const fieldToUpdate = tipo === 'documento' ? 'documentos' : 'projetos3d';
+                    await updateDoc(docRef, { [fieldToUpdate]: arrayRemove(anexoToDelete) });
+                } else {
+                    console.error("Falha ao deletar anexo.");
+                }
+            }
+        }
+
+
+        // --- ATUALIZAÇÃO DO DASHBOARD ---
+        async function updateDashboard() {
+            if (!currentUserId) return;
+
+            const agora = new Date();
+            const primeiroDiaMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+            const ultimoDiaMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+
+            let veiculosCount = 0;
+            let projetosCount = 0;
+            let totalOrcadoMes = 0;
+            let totalFaturadoMes = 0;
+            const atividadesRecentes = [];
+
+            const veiculosQuery = query(collection(db, `users/${currentUserId}/veiculos`));
+            const veiculosSnapshot = await getDocs(veiculosQuery);
+
+            for (const veiculoDoc of veiculosSnapshot.docs) {
+                const veiculo = veiculoDoc.data();
+                if (veiculo.status !== 'Finalizado') {
+                    veiculosCount++;
+                }
+                if (veiculo.createdAt && typeof veiculo.createdAt.toDate === 'function') {
+                    const dataVeiculo = veiculo.createdAt.toDate();
+                    if (dataVeiculo >= primeiroDiaMes && dataVeiculo <= ultimoDiaMes) {
+                        atividadesRecentes.push({
+                            data: dataVeiculo,
+                            texto: `Veículo adicionado: ${veiculo.placa} - ${veiculo.modelo}`
+                        });
+                    }
+                }
+            }
+            
+            const notasQuery = query(collection(db, `users/${currentUserId}/notas`), where('createdAt', '>=', primeiroDiaMes), where('createdAt', '<=', ultimoDiaMes));
+            const notasSnapshot = await getDocs(notasQuery);
+            notasSnapshot.forEach(notaDoc => {
+                const nota = notaDoc.data();
+                if (nota.status === 'Orçamento' || nota.status === 'Aprovada') {
+                    totalOrcadoMes += nota.valorTotal || 0;
+                }
+                if(nota.status === 'Paga') {
+                    totalFaturadoMes += nota.valorTotal || 0;
+                }
+            });
+
+            const projetosQuery = query(collection(db, `users/${currentUserId}/projetos`));
+            const projetosSnapshot = await getDocs(projetosQuery);
+            const prazos = [];
+
+            projetosSnapshot.forEach(projetoDoc => {
+                const projeto = projetoDoc.data();
+                if (projeto.status !== 'Concluído') {
+                    projetosCount++;
+                    if (projeto.prazo && typeof projeto.prazo.toDate === 'function') {
+                        prazos.push({
+                            data: projeto.prazo.toDate(),
+                            texto: `${projeto.nome} - ${projeto.clienteNome}`
+                        });
+                    }
+                }
+                
+                if (projeto.createdAt && typeof projeto.createdAt.toDate === 'function') {
+                    const dataProjeto = projeto.createdAt.toDate();
+                    if (dataProjeto >= primeiroDiaMes && dataProjeto <= ultimoDiaMes) {
+                        totalOrcadoMes += projeto.valor || 0;
+                        atividadesRecentes.push({
+                            data: dataProjeto,
+                            texto: `Projeto adicionado: ${projeto.nome}`
+                        });
+                        if (projeto.status === 'Concluído') {
+                            totalFaturadoMes += projeto.valor || 0;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('veiculos-manutencao-count').textContent = veiculosCount;
+            document.getElementById('projetos-andamento-count').textContent = projetosCount;
+            document.getElementById('total-orcado').textContent = `R$ ${totalOrcadoMes.toFixed(2).replace('.', ',')}`;
+            document.getElementById('total-faturado').textContent = `R$ ${totalFaturadoMes.toFixed(2).replace('.', ',')}`;
+
+            const prazosList = document.getElementById('prazos-list');
+            prazosList.innerHTML = '';
+            if (prazos.length > 0) {
+                prazos.sort((a, b) => a.data - b.data)
+                    .slice(0, 5)
+                    .forEach(p => {
+                        const li = document.createElement('li');
+                        li.textContent = `${p.data.toLocaleDateString()} - ${p.texto}`;
+                        prazosList.appendChild(li);
+                    });
+            } else {
+                prazosList.innerHTML = '<li>Nenhum prazo iminente.</li>';
+            }
+            
+            const atividadesList = document.getElementById('atividades-recentes-list');
+            atividadesList.innerHTML = '';
+            if(atividadesRecentes.length > 0) {
+                atividadesRecentes.sort((a,b) => b.data - a.data)
+                                .slice(0, 5)
+                                .forEach(a => {
+                                    const li = document.createElement('li');
+                                    li.textContent = `${a.data.toLocaleDateString()} - ${a.texto}`;
+                                    atividadesList.appendChild(li);
+                                });
+            } else {
+                atividadesList.innerHTML = '<li>Nenhuma atividade recente.</li>';
+            }
+        }
+
+        // --- BUSCA ---
+        function setupSearchListeners() {
+            document.getElementById('automotivo-search').addEventListener('keyup', (e) => filterTable('veiculos-table', e.target.value));
+            document.getElementById('industrial-search').addEventListener('keyup', (e) => filterTable('projetos-table', e.target.value));
+            document.getElementById('clientes-search').addEventListener('keyup', (e) => filterTable('clientes-table', e.target.value));
+            document.getElementById('fornecedores-search').addEventListener('keyup', (e) => filterTable('fornecedores-table', e.target.value));
+        }
+
+        function filterTable(tableId, searchTerm) {
+            const term = searchTerm.toLowerCase();
+            const rows = document.getElementById(tableId).getElementsByTagName('tr');
+            Array.from(rows).forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+        }
+        
+        // --- LÓGICA DE PEÇAS NO SERVIÇO ---
+        document.getElementById('add-peca-servico-btn').addEventListener('click', () => {
+            const pecaSelect = document.getElementById('servico-peca-select');
+            const pecaId = pecaSelect.value;
+            const quantidade = parseFloat(document.getElementById('servico-peca-qtd').value);
+
+            if (!pecaId || !quantidade) {
+                console.error('Selecione uma peça e informe a quantidade.');
+                return;
+            }
+
+            const pecaOriginal = catalogoPecas.find(p => p.id === pecaId);
+            if (pecaOriginal) {
+                pecasSelecionadas.push({
+                    pecaId: pecaOriginal.id,
+                    nome: pecaOriginal.nome,
+                    quantidade: quantidade,
+                    precoUnitario: pecaOriginal.preco,
+                    unidade: pecaOriginal.unidade
+                });
+                renderPecasList();
+                pecaSelect.value = '';
+                document.getElementById('servico-peca-qtd').value = 1;
+            }
+        });
+        
+        document.getElementById('add-peca-servico-rapido-btn').addEventListener('click', () => {
+            const pecaSelect = document.getElementById('servico-rapido-peca-select');
+            const pecaId = pecaSelect.value;
+            const quantidade = parseFloat(document.getElementById('servico-rapido-peca-qtd').value);
+
+            if (!pecaId || !quantidade) {
+                 console.error('Selecione uma peça e informe a quantidade.');
+                return;
+            }
+
+            const pecaOriginal = catalogoPecas.find(p => p.id === pecaId);
+            if (pecaOriginal) {
+                pecasServicoRapido.push({
+                    pecaId: pecaOriginal.id,
+                    nome: pecaOriginal.nome,
+                    quantidade: quantidade,
+                    precoUnitario: pecaOriginal.preco,
+                    unidade: pecaOriginal.unidade
+                });
+                renderPecasServicoRapidoList();
+                 pecaSelect.value = '';
+                document.getElementById('servico-rapido-peca-qtd').value = 1;
+            }
+        });
+
+        document.getElementById('add-ferramenta-servico-rapido-btn').addEventListener('click', () => {
+            const ferramentaSelect = document.getElementById('servico-rapido-ferramenta-select');
+            const ferramentaId = ferramentaSelect.value;
+
+            if (!ferramentaId) return;
+            
+            const ferramentaOriginal = catalogoFerramentas.find(f => f.id === ferramentaId);
+            if(ferramentaOriginal && !ferramentasServicoRapido.find(f => f.id === ferramentaId)) {
+                ferramentasServicoRapido.push({
+                    id: ferramentaOriginal.id,
+                    nome: ferramentaOriginal.nome
+                });
+                renderFerramentasServicoRapidoList();
+            }
+        });
+
+        // --- SERVIÇOS RÁPIDOS ---
+        function preencherServicoFormComRapido(servico) {
+            document.getElementById('servico-descricao').value = servico.descricao;
+            document.getElementById('servico-valor-mao-de-obra').value = servico.maoDeObra.toFixed(2);
+            
+            pecasSelecionadas = Array.isArray(servico.pecas) ? [...servico.pecas] : [];
+            renderPecasList();
+
+            const ferramentasListaUI = document.getElementById('ferramentas-necessarias-lista');
+            ferramentasListaUI.innerHTML = '';
+            if(Array.isArray(servico.ferramentas)) {
+                servico.ferramentas.forEach(f => {
+                    ferramentasListaUI.innerHTML += `<li><span>${f.nome}</span></li>`
+                });
+            }
+        }
+
+        // --- LÓGICA DE NOTA DE SERVIÇO ---
+        function setupNotaListeners() {
+            const gerarNotaBtn = document.getElementById('gerar-nota-btn');
+            const exportarPdfBtn = document.getElementById('exportar-pdf-btn');
+            const selecionarTodosCheckbox = document.getElementById('selecionar-todos-servicos');
+
+            if (selecionarTodosCheckbox) {
+                selecionarTodosCheckbox.addEventListener('change', (e) => {
+                    document.querySelectorAll('.servico-checkbox').forEach(checkbox => {
+                        checkbox.checked = e.target.checked;
+                    });
+                });
+            }
+
+            if (gerarNotaBtn) {
+                gerarNotaBtn.addEventListener('click', async () => {
+                    const veiculoId = document.getElementById('servico-veiculo-id').value;
+                    if (!veiculoId) return;
+
+                    const selectedIds = Array.from(document.querySelectorAll('.servico-checkbox:checked')).map(cb => cb.dataset.id);
+
+                    if (selectedIds.length === 0) {
+                        alert("Por favor, selecione ao menos um serviço para gerar a nota.");
+                        return;
+                    }
+
+                    try {
+                        const veiculo = await getDocument('veiculos', veiculoId);
+                        const cliente = await getDocument('clientes', veiculo.proprietarioId);
+                        
+                        const servicosPromises = selectedIds.map(id => getDoc(doc(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`, id)));
+                        const servicosDocs = await Promise.all(servicosPromises);
+                        const servicos = servicosDocs.map(d => d.data());
+                        const valorTotal = servicos.reduce((acc, srv) => acc + srv.valorTotal, 0);
+
+                        const notaData = {
+                            veiculoId,
+                            clienteId: veiculo.proprietarioId,
+                            veiculoInfo: {
+                                placa: veiculo.placa,
+                                modelo: `${veiculo.marca} ${veiculo.modelo}`,
+                                quilometragem: veiculo.quilometragem || 0
+                            },
+                            clienteInfo: cliente,
+                            servicos,
+                            valorTotal,
+                            createdAt: Timestamp.now(),
+                            status: 'Orçamento'
+                        };
+
+                        const docRef = await addDoc(collection(db, `users/${currentUserId}/notas`), notaData);
+                        alert('Orçamento gerado com sucesso!');
+                        await visualizarNota(docRef.id);
+
+                    } catch (err) {
+                        console.error("Erro ao gerar nota:", err);
+                        alert("Ocorreu um erro ao buscar os dados para a nota.");
+                    }
+                });
+            }
+
+            if(exportarPdfBtn) {
+                exportarPdfBtn.addEventListener('click', () => {
+                     const { jsPDF } = window.jspdf;
+                     const doc = new jsPDF();
+
+                     const empresaNome = document.getElementById('nota-empresa-nome').textContent;
+                     const empresaCnpj = document.getElementById('nota-empresa-cnpj').textContent;
+                     const empresaEndereco = document.getElementById('nota-empresa-endereco').textContent;
+                     const empresaTelefone = document.getElementById('nota-empresa-telefone').textContent;
+                     const empresaEmail = document.getElementById('nota-empresa-email').textContent;
+
+                     const clienteNome = document.getElementById('nota-cliente-nome').textContent;
+                     const clienteCpf = document.getElementById('nota-cliente-cpf').textContent;
+                     const clienteEndereco = document.getElementById('nota-cliente-endereco').textContent;
+                     const clienteContato = `${document.getElementById('nota-cliente-telefone').textContent} | ${document.getElementById('nota-cliente-email').textContent}`;
+
+                     const veiculoModelo = document.getElementById('nota-veiculo-modelo').textContent;
+                     const veiculoPlaca = document.getElementById('nota-veiculo-placa').textContent;
+                     const veiculoKm = document.getElementById('nota-veiculo-km').textContent;
+                     const totalGeral = document.getElementById('nota-total-geral').textContent;
+
+                     const body = [];
+                     document.querySelectorAll('#nota-servicos-container > div').forEach(servicoDiv => {
+                        const servicoDesc = servicoDiv.querySelector('strong').textContent.replace('Serviço: ','');
+                        const pecas = Array.from(servicoDiv.querySelectorAll('ul li')).map(li => li.textContent).join('\n');
+                        const subtotal = servicoDiv.querySelector('p:last-child strong').textContent;
+                        body.push([servicoDesc, pecas, subtotal.replace('Subtotal Serviço: ','')]);
+                     });
+
+                     let startY = 20;
+                     doc.setFontSize(18);
+                     doc.text(empresaNome, 105, startY, null, null, "center");
+                     startY += 7;
+
+                     doc.setFontSize(10);
+                     doc.text(`${empresaCnpj} | ${empresaTelefone} | ${empresaEmail}`, 105, startY, null, null, "center");
+                     startY += 5;
+                     doc.text(empresaEndereco, 105, startY, null, null, "center");
+                     startY += 10;
+                     
+                     doc.setLineWidth(0.5);
+                     doc.line(14, startY, 196, startY);
+                     startY += 10;
+                     
+                     doc.setFontSize(12);
+                     doc.text(`CLIENTE: ${clienteNome} (CPF: ${clienteCpf})`, 14, startY);
+                     startY += 6;
+                     doc.text(`ENDEREÇO: ${clienteEndereco}`, 14, startY);
+                     startY += 6;
+                     doc.text(`CONTATO: ${clienteContato}`, 14, startY);
+                     startY += 10;
+
+                     doc.text(`VEÍCULO: ${veiculoModelo} (PLACA: ${veiculoPlaca}) | KM: ${veiculoKm}`, 14, startY);
+                     startY += 10;
+
+                     doc.autoTable({
+                        startY: startY,
+                        head: [['Serviço', 'Peças / Detalhes', 'Subtotal']],
+                        body: body,
+                        theme: 'grid',
+                        headStyles: { fillColor: [15, 52, 96] } // --primary color
+                     });
+
+                     const finalY = doc.autoTable.previous.finalY;
+                     doc.setFontSize(14);
+                     doc.text(`Total Geral: ${totalGeral}`, 196, finalY + 15, null, null, 'right');
+                     doc.save(`Nota_${veiculoPlaca}.pdf`);
+                });
+            }
+        }
+        
+        const renderNotaRow = (id, data) => {
+            let statusBadge = '';
+            let actions = '';
+            const statusClassMap = {
+                'Orçamento': 'status-orcamento',
+                'Aprovada': 'status-aprovada',
+                'Paga': 'status-paga'
+            };
+            statusBadge = `<span class="status-badge ${statusClassMap[data.status] || ''}">${data.status}</span>`;
+
+            if (data.status === 'Orçamento') {
+                actions += `<button class="btn btn-primary btn-sm" onclick="window.updateNotaStatus('${id}', 'Aprovada')">Aprovar</button>`;
+            }
+            if (data.status === 'Aprovada') {
+                actions += `<button class="btn btn-primary btn-sm" onclick="window.updateNotaStatus('${id}', 'Paga')">Pagar</button>`;
+            }
+
+            actions += `<button class="view-btn" onclick="window.visualizarNota('${id}')"><i class="fas fa-eye"></i></button>`;
+            actions += `<button class="delete-btn" onclick="window.excluirNota('${id}')"><i class="fas fa-trash"></i></button>`;
+
+            return `
+                <tr>
+                    <td>${new Date(data.createdAt.seconds * 1000).toLocaleDateString()}</td>
+                    <td>${data.clienteInfo.nome}</td>
+                    <td>${data.veiculoInfo.placa}</td>
+                    <td>R$ ${data.valorTotal.toFixed(2)}</td>
+                    <td>${statusBadge}</td>
+                    <td class="actions-cell">${actions}</td>
+                </tr>
+            `;
+        };
+        
+        window.updateNotaStatus = async (notaId, newStatus) => {
+            const notaRef = doc(db, `users/${currentUserId}/notas`, notaId);
+            await updateDoc(notaRef, { status: newStatus });
+        };
+        
+        window.excluirNota = async (notaId) => {
+             await deleteDoc(doc(db, `users/${currentUserId}/notas`, notaId));
+        };
+        
+        window.visualizarNota = async (notaId) => {
+            const nota = await getDocument('notas', notaId);
+            if(!nota) { alert("Nota não encontrada"); return; }
+            
+            document.getElementById('nota-empresa-nome').textContent = empresaInfo.nome || 'Sua Empresa';
+            document.getElementById('nota-empresa-cnpj').textContent = `CNPJ/CPF: ${empresaInfo.cnpj || 'Não informado'}`;
+            document.getElementById('nota-empresa-endereco').textContent = empresaInfo.endereco || '';
+            document.getElementById('nota-empresa-telefone').textContent = empresaInfo.telefone || '';
+            document.getElementById('nota-empresa-email').textContent = empresaInfo.email || '';
+
+            document.getElementById('nota-cliente-nome').textContent = nota.clienteInfo.nome;
+            document.getElementById('nota-cliente-cpf').textContent = nota.clienteInfo.cpf;
+            document.getElementById('nota-cliente-endereco').textContent = nota.clienteInfo.endereco || '';
+            document.getElementById('nota-cliente-telefone').textContent = nota.clienteInfo.telefone || '';
+            document.getElementById('nota-cliente-email').textContent = nota.clienteInfo.email || '';
+
+            document.getElementById('nota-veiculo-modelo').textContent = nota.veiculoInfo.modelo;
+            document.getElementById('nota-veiculo-placa').textContent = nota.veiculoInfo.placa;
+            document.getElementById('nota-veiculo-km').textContent = nota.veiculoInfo.quilometragem ? `${nota.veiculoInfo.quilometragem.toLocaleString('pt-BR')} km` : 'N/A';
+            
+            document.getElementById('nota-id').textContent = notaId.substring(0, 8).toUpperCase();
+            document.getElementById('nota-status').innerHTML = `<span class="status-badge ${nota.status === 'Orçamento' ? 'status-orcamento' : nota.status === 'Aprovada' ? 'status-aprovada' : 'status-paga'}">${nota.status}</span>`;
+
+
+            let totalGeral = 0;
+            const container = document.getElementById('nota-servicos-container');
+            container.innerHTML = ''; 
+
+            nota.servicos.forEach(servico => {
+                totalGeral += servico.valorTotal;
+
+                let pecasHtml = '<ul style="padding-left: 20px; margin-top: 5px; list-style-position: inside;">';
+                if (Array.isArray(servico.pecas) && servico.pecas.length > 0) {
+                    servico.pecas.forEach(p => {
+                        pecasHtml += `<li>${p.quantidade}x ${p.nome} - R$ ${(p.quantidade * p.precoUnitario).toFixed(2)}</li>`;
+                    });
+                } else {
+                    pecasHtml += '<li>Nenhuma peça utilizada.</li>';
+                }
+                pecasHtml += '</ul>';
+
+                const servicoDiv = document.createElement('div');
+                servicoDiv.innerHTML = `
+                    <div style="border: 1px solid var(--primary); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <strong>Serviço: ${servico.descricao}</strong><br>
+                        <em>Data: ${new Date(servico.createdAt.seconds * 1000).toLocaleDateString()}</em>
+                        <p>Peças:</p>
+                        ${pecasHtml}
+                        <p style="text-align: right; margin-top: 10px;">
+                            Mão de Obra: R$ ${servico.valorMaoDeObra.toFixed(2)} <br>
+                            <strong>Subtotal Serviço: R$ ${servico.valorTotal.toFixed(2)}</strong>
+                        </p>
+                    </div>
+                `;
+                container.appendChild(servicoDiv);
+            });
+
+            document.getElementById('nota-total-geral').textContent = `R$ ${totalGeral.toFixed(2)}`;
+
+            openModal('nota-modal');
+        }
+
+        // --- INFORMAÇÕES DA EMPRESA ---
+        function setupEmpresaInfoListener() {
+            const empresaForm = document.getElementById('empresa-info-form');
+            if (!empresaForm) return;
+
+            const docRef = doc(db, `users/${currentUserId}/configuracoes`, 'empresa');
+
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    empresaInfo = docSnap.data();
+                    document.getElementById('empresa-nome').value = empresaInfo.nome || '';
+                    document.getElementById('empresa-cnpj').value = empresaInfo.cnpj || '';
+                    document.getElementById('empresa-endereco').value = empresaInfo.endereco || '';
+                    document.getElementById('empresa-telefone').value = empresaInfo.telefone || '';
+                    document.getElementById('empresa-email').value = empresaInfo.email || '';
+                } else {
+                    empresaInfo = {};
+                }
+            });
+
+            empresaForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const data = {
+                    nome: document.getElementById('empresa-nome').value,
+                    cnpj: document.getElementById('empresa-cnpj').value,
+                    endereco: document.getElementById('empresa-endereco').value,
+                    telefone: document.getElementById('empresa-telefone').value,
+                    email: document.getElementById('empresa-email').value,
+                };
+                await setDoc(docRef, data, { merge: true });
+                alert('Informações da empresa salvas com sucesso!');
+            });
+        }
+        
+        // --- OBJETIVOS DO PROJETO ---
+        function setupObjetivosListeners() {
+            const form = document.getElementById('add-objetivo-form');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const input = document.getElementById('novo-objetivo-input');
+                const nomeObjetivo = input.value.trim();
+
+                if (nomeObjetivo && currentProjectId) {
+                    const novoObjetivo = {
+                        nome: nomeObjetivo,
+                        concluido: false
+                    };
+                    const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
+                    await updateDoc(docRef, {
+                        objetivos: arrayUnion(novoObjetivo)
+                    });
+                    input.value = '';
+                }
+            });
+        }
+
+        function renderObjetivos(objetivos, projectId) {
+            const listaUI = document.getElementById('objetivos-lista');
+            listaUI.innerHTML = '';
+
+            if (!Array.isArray(objetivos) || objetivos.length === 0) {
+                listaUI.innerHTML = '<li>Nenhum objetivo definido.</li>';
+            } else {
+                objetivos.forEach((objetivo, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <input type="checkbox" ${objetivo.concluido ? 'checked' : ''}>
+                        <span class="objetivo-texto ${objetivo.concluido ? 'concluido' : ''}">${objetivo.nome}</span>
+                        <button type="button" class="remover-peca-btn"><i class="fas fa-trash"></i></button>
+                    `;
+                    li.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
+                        updateObjetivoStatus(projectId, index, e.target.checked, objetivos);
+                    });
+                    li.querySelector('.remover-peca-btn').addEventListener('click', () => {
+                        deleteObjetivo(projectId, objetivo);
+                    });
+                    listaUI.appendChild(li);
+                });
+            }
+            const concluidos = objetivos.filter(o => o.concluido).length;
+            const total = objetivos.length;
+            const porcentagem = total > 0 ? (concluidos / total) * 100 : 0;
+
+            document.getElementById('projeto-progresso-bar').style.width = `${porcentagem}%`;
+            document.getElementById('projeto-progresso-texto').textContent = `${Math.round(porcentagem)}%`;
+        }
+
+        async function updateObjetivoStatus(projectId, index, newStatus, currentObjetivos) {
+            const objetivosCopy = JSON.parse(JSON.stringify(currentObjetivos));
+            objetivosCopy[index].concluido = newStatus;
+            const docRef = doc(db, `users/${currentUserId}/projetos`, projectId);
+            await updateDoc(docRef, { objetivos: objetivosCopy });
+        }
+
+        async function deleteObjetivo(projectId, objetivo) {
+            const docRef = doc(db, `users/${currentUserId}/projetos`, projectId);
+            await updateDoc(docRef, { objetivos: arrayRemove(objetivo) });
+        }
+
+
+        // --- UPLOAD GOOGLE DRIVE ---
+        function setupDriveListeners() {
+            const authBtn = document.getElementById('gdrive-auth-btn');
+            const uploadBtn = document.getElementById('upload-gdrive-btn');
+            const gdriveUploadInput = document.getElementById('gdrive-upload-input');
+            const tabs = document.querySelectorAll('.tab-link');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    document.getElementById(tab.dataset.target).classList.remove('hidden');
+                });
+            });
+
+            authBtn.addEventListener('click', async () => {
+                try {
+                    await handleAuthClick();
+                    updateDriveButtonState();
+                } catch (error) {
+                    console.error("Erro de autenticação:", error);
+                }
+            });
+
+            uploadBtn.addEventListener('click', () => {
+                gdriveUploadInput.value = null;
+                gdriveUploadInput.click();
+            });
+
+            gdriveUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    uploadFileToDrive(file);
+                }
+            });
+        }
+
+        function updateDriveButtonState() {
+            const authBtn = document.getElementById('gdrive-auth-btn');
+            const uploadBtn = document.getElementById('upload-gdrive-btn');
+            if (window.gapi && window.gapi.client && window.gapi.client.getToken()) {
+                authBtn.classList.add('hidden');
+                uploadBtn.classList.remove('hidden');
+            } else {
+                authBtn.classList.remove('hidden');
+                uploadBtn.classList.add('hidden');
+            }
+        }
+        
+        async function getOrCreateFolder(name, parentId = 'root') {
+            const query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
+            const response = await gapi.client.drive.files.list({ q: query, fields: 'files(id)' });
+            
+            if (response.result.files.length > 0) {
+                return response.result.files[0].id;
+            } else {
+                const fileMetadata = {
+                    name: name,
+                    mimeType: 'application/vnd.google-apps.folder',
+                    parents: [parentId]
+                };
+                const newFolder = await gapi.client.drive.files.create({ resource: fileMetadata, fields: 'id' });
+                return newFolder.result.id;
+            }
+        }
+
+        async function uploadFileToDrive(file) {
+            if (!file || !currentProjectId) return;
+            const activeTab = document.querySelector('.tab-link.active').dataset.target;
+            const uploadType = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
+
+            const uploadButton = document.getElementById('upload-gdrive-btn');
+            uploadButton.disabled = true;
+            uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A enviar...';
+
+            try {
+                const appFolderId = await getOrCreateFolder('Gestão Garagem App');
+                const projeto = await getDocument('projetos', currentProjectId);
+                const projectFolderId = await getOrCreateFolder(projeto.nome, appFolderId);
+
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify({
+                    name: file.name,
+                    mimeType: file.type,
+                    parents: [projectFolderId]
+                })], { type: 'application/json' }));
+                form.append('file', file);
+                
+                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: new Headers({ 'Authorization': 'Bearer ' + gapi.client.getToken().access_token }),
+                    body: form,
+                });
+
+                const result = await response.json();
+                if (result.id) {
+                    await gapi.client.drive.permissions.create({
+                        fileId: result.id,
+                        resource: {
+                            role: 'reader',
+                            type: 'anyone'
+                        }
+                    });
+
+                    const fileData = await gapi.client.drive.files.get({
+                        fileId: result.id,
+                        fields: 'webViewLink'
+                    });
+                    
+                    const novoAnexo = {
+                        nome: file.name,
+                        url: fileData.result.webViewLink,
+                        fileId: result.id,
+                        createdAt: Timestamp.now()
+                    };
+
+                    const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
+                    await updateDoc(docRef, { [uploadType]: arrayUnion(novoAnexo) });
+
+                } else {
+                     console.error('Falha ao enviar arquivo para o Google Drive.');
+                }
+            } catch (error) {
+                console.error("Erro no upload para o Drive:", error);
+            } finally {
+                uploadButton.disabled = false;
+                uploadButton.innerHTML = '<i class="fas fa-upload"></i> Enviar Ficheiro';
+            }
+        }
+        
+        // --- CHECKLIST ---
+        function setupChecklistListeners() {
+            const openBtn = document.getElementById('abrir-checklist-btn');
+            const form = document.getElementById('checklist-form');
+            const canvas = document.getElementById('signature-canvas');
+            const clearBtn = document.getElementById('clear-signature-btn');
+            const ctx = canvas.getContext('2d');
+            let drawing = false;
+
+            openBtn.addEventListener('click', () => {
+                form.reset();
+                document.getElementById('checklist-id').value = '';
+                document.getElementById('checklist-modal-title').textContent = "Checklist de Entrada de Veículo";
+                document.getElementById('saved-signature-img').classList.add('hidden');
+                canvas.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+                document.getElementById('checklist-save-btn').classList.remove('hidden');
+                openModal('checklist-modal');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+            
+            function getMousePos(canvasDom, mouseEvent) {
+                var rect = canvasDom.getBoundingClientRect();
+                return {
+                    x: mouseEvent.clientX - rect.left,
+                    y: mouseEvent.clientY - rect.top
+                };
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                drawing = true;
+                const pos = getMousePos(canvas, e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            });
+            canvas.addEventListener('mouseup', () => {
+                drawing = false;
+            });
+            canvas.addEventListener('mousemove', (e) => {
+                if (!drawing) return;
+                const pos = getMousePos(canvas, e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            });
+            clearBtn.addEventListener('click', () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+            
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const veiculoId = document.getElementById('checklist-veiculo-id').value;
+                if(!veiculoId) return;
+
+                const data = {
+                    createdAt: Timestamp.now(),
+                    itens: {
+                        farois: document.getElementById('check-farois').checked,
+                        lanternas: document.getElementById('check-lanternas').checked,
+                        retrovisores: document.getElementById('check-retrovisores').checked,
+                        pneus: document.getElementById('check-pneus').checked,
+                        vidros: document.getElementById('check-vidros').checked,
+                        radio: document.getElementById('check-radio').checked,
+                        tapetes: document.getElementById('check-tapetes').checked,
+                        extintor: document.getElementById('check-extintor').checked,
+                        macaco: document.getElementById('check-macaco').checked,
+                        triangulo: document.getElementById('check-triangulo').checked,
+                    },
+                    avarias: document.getElementById('check-avarias').value,
+                    obsInternas: document.getElementById('check-obs-internas').value,
+                    combustivel: document.getElementById('check-combustivel').value,
+                    assinatura: canvas.toDataURL()
+                };
+                
+                await addDoc(collection(db, `users/${currentUserId}/veiculos/${veiculoId}/checklists`), data);
+                closeModal('checklist-modal');
+                alert('Checklist salvo com sucesso!');
+            });
+        }
+        
+        window.visualizarChecklist = async (veiculoId, checklistId) => {
+            const checklist = await getDocument('veiculos', veiculoId, { name: 'checklists', id: checklistId });
+            if(!checklist) return;
+
+            const form = document.getElementById('checklist-form');
+            form.reset();
+            document.getElementById('checklist-id').value = checklistId;
+            document.getElementById('checklist-modal-title').textContent = `Checklist - ${new Date(checklist.createdAt.seconds * 1000).toLocaleDateString()}`;
+
+            // Populate form
+            for(const key in checklist.itens) {
+                const element = document.getElementById(`check-${key}`);
+                if(element) element.checked = checklist.itens[key];
+            }
+            document.getElementById('check-avarias').value = checklist.avarias || '';
+            document.getElementById('check-obs-internas').value = checklist.obsInternas || '';
+            document.getElementById('check-combustivel').value = checklist.combustivel || 50;
+            
+            // Handle signature display
+            document.getElementById('signature-canvas').classList.add('hidden');
+            document.getElementById('clear-signature-btn').classList.add('hidden');
+            const savedImg = document.getElementById('saved-signature-img');
+            savedImg.src = checklist.assinatura;
+            savedImg.classList.remove('hidden');
+
+            document.getElementById('checklist-save-btn').classList.add('hidden');
+            openModal('checklist-modal');
+        }
+
+    </script>
+</body>
+</html>
+
