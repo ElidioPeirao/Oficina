@@ -947,7 +947,7 @@
                 <div class="header">
                     <h3>Anexos</h3>
                     <div>
-                        <input type="file" id="anexo-upload-input" class="hidden">
+                        <input type="file" id="anexo-upload-input" class="hidden" multiple>
                         <button class="btn btn-primary" id="add-anexo-btn"><i class="fas fa-upload"></i> Adicionar Anexo</button>
                     </div>
                 </div>
@@ -1414,7 +1414,7 @@
     <div id="servico-modal" class="modal hidden">
         <div class="modal-content" style="max-width: 800px;">
             <span class="close-btn">&times;</span>
-            <h3>Adicionar Manutenção/Serviço</h3>
+            <h3 id="servico-modal-title">Adicionar/Editar Serviço</h3>
             
             <div id="servicos-rapidos-container" style="margin-bottom: 20px;">
                 <h4>Serviços Rápidos</h4>
@@ -1631,17 +1631,40 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <h3 id="confirm-modal-title">Confirmar Ação</h3>
+            <p id="confirm-modal-text" style="margin: 20px 0; font-size: 16px;">Você tem certeza?</p>
+            <div class="modal-actions" style="justify-content: center;">
+                <button id="confirm-cancel-btn" class="btn" style="background-color: var(--primary);">Cancelar</button>
+                <button id="confirm-confirm-btn" class="btn btn-primary" style="background-color: var(--accent);">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Alerta/Notificação -->
+    <div id="alert-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <h3 id="alert-modal-title">Aviso</h3>
+            <p id="alert-modal-text" style="margin: 20px 0; font-size: 16px;"></p>
+            <div class="modal-actions" style="justify-content: center;">
+                <button id="alert-ok-btn" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
     
     <script type="module">
-        // Importar os módulos do Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        // Importar os módulos do Firebase (versão atualizada)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
             onAuthStateChanged, 
             signOut 
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
             collection, 
@@ -1661,14 +1684,14 @@
             arrayUnion,
             arrayRemove,
             setDoc
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import {
             getStorage,
             ref,
             uploadBytes,
             getDownloadURL,
             deleteObject
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
         
         // Configuração do Firebase
         const firebaseConfig = {
@@ -1699,6 +1722,7 @@
         let servicosRapidos = [];
         let currentProjectId = null; // Para saber em qual projeto adicionar anexo
         let empresaInfo = {};
+        let confirmCallback = null; // Variável para o callback de confirmação
 
         const defaultServicosPadrao = [
             { nome: 'Troca de Óleo e Filtro', descricao: 'Troca de óleo do motor e filtro de óleo.', maoDeObra: 50.00, pecas: [], ferramentas: [] },
@@ -1785,6 +1809,38 @@
         }
 
 
+        // --- LÓGICA DE CONFIRMAÇÃO ---
+        function showConfirmModal(message, callback) {
+            document.getElementById('confirm-modal-text').textContent = message;
+            confirmCallback = callback;
+            openModal('confirm-modal');
+        }
+
+        document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+            closeModal('confirm-modal');
+            confirmCallback = null;
+        });
+
+        document.getElementById('confirm-confirm-btn').addEventListener('click', () => {
+            if (typeof confirmCallback === 'function') {
+                confirmCallback();
+            }
+            closeModal('confirm-modal');
+            confirmCallback = null;
+        });
+
+        // --- LÓGICA DE ALERTA ---
+        function showAlert(message, title = "Aviso") {
+            document.getElementById('alert-modal-title').textContent = title;
+            document.getElementById('alert-modal-text').textContent = message;
+            openModal('alert-modal');
+        }
+
+        document.getElementById('alert-ok-btn').addEventListener('click', () => {
+            closeModal('alert-modal');
+        });
+
+
         // --- LÓGICA DE AUTENTICAÇÃO ---
         const loginView = document.getElementById('login-view');
         const registerView = document.getElementById('register-view');
@@ -1853,7 +1909,7 @@
             if(activeLink) activeLink.classList.add('active');
 
             contentSections.forEach(section => {
-                if (section.id === `${targetId}-section`) {
+                if (section.id === `${targetId}-section` || section.id.startsWith(targetId)) {
                     section.classList.add('active');
                 } else {
                     section.classList.remove('active');
@@ -1917,6 +1973,7 @@
 
         document.getElementById('abrir-servico-modal-btn').addEventListener('click', () => {
             document.getElementById('servico-form').reset();
+            document.getElementById('servico-modal-title').textContent = "Adicionar Serviço";
             document.getElementById('servico-id').value = '';
             pecasSelecionadas = [];
             renderPecasList();
@@ -2110,6 +2167,7 @@
         const servicoForm = document.getElementById('servico-form');
         servicoForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const servicoId = document.getElementById('servico-id').value;
             const veiculoId = document.getElementById('servico-veiculo-id').value;
             const valorMaoDeObra = parseFloat(document.getElementById('servico-valor-mao-de-obra').value) || 0;
             const valorPecas = parseFloat(document.getElementById('servico-valor-pecas').value) || 0;
@@ -2120,10 +2178,16 @@
                 valorMaoDeObra: valorMaoDeObra,
                 valorPecas: valorPecas,
                 valorTotal: valorMaoDeObra + valorPecas,
-                createdAt: Timestamp.now()
             };
 
-            await addDoc(collection(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`), data);
+            if (servicoId) {
+                const servicoRef = doc(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`, servicoId);
+                await updateDoc(servicoRef, data);
+            } else {
+                data.createdAt = Timestamp.now();
+                await addDoc(collection(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`), data);
+            }
+
             closeModal('servico-modal');
             servicoForm.reset();
         });
@@ -2403,14 +2467,80 @@
             openModal('servico-rapido-modal');
         }
 
-        async function deleteCliente(id) { await deleteDoc(doc(db, `users/${currentUserId}/clientes`, id)); }
-        async function deleteFornecedor(id) { await deleteDoc(doc(db, `users/${currentUserId}/fornecedores`, id)); }
-        async function deleteFerramenta(id) { await deleteDoc(doc(db, `users/${currentUserId}/ferramentas`, id)); }
-        async function deleteVeiculo(id) { await deleteDoc(doc(db, `users/${currentUserId}/veiculos`, id)); }
-        async function deleteProjeto(id) { await deleteDoc(doc(db, `users/${currentUserId}/projetos`, id)); }
-        async function deletePeca(id) { await deleteDoc(doc(db, `users/${currentUserId}/pecas`, id)); }
-        async function deleteServico(veiculoId, servicoId) { await deleteDoc(doc(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`, servicoId)); }
-        async function deleteServicoRapido(id) { await deleteDoc(doc(db, `users/${currentUserId}/servicosPadrao`, id)); }
+        // --- NEW --- Function to open service modal for editing
+        window.editServico = async (veiculoId, servicoId) => {
+            try {
+                const servico = await getDocument('veiculos', veiculoId, { name: 'servicos', id: servicoId });
+                if (!servico) {
+                    showAlert("Serviço não encontrado.");
+                    return;
+                }
+
+                // Populate the form
+                document.getElementById('servico-form').reset();
+                document.getElementById('servico-modal-title').textContent = "Editar Serviço";
+                document.getElementById('servico-id').value = servicoId;
+                document.getElementById('servico-veiculo-id').value = veiculoId;
+                document.getElementById('servico-descricao').value = servico.descricao;
+                document.getElementById('servico-valor-mao-de-obra').value = servico.valorMaoDeObra.toFixed(2);
+                
+                // Populate parts
+                pecasSelecionadas = Array.isArray(servico.pecas) ? JSON.parse(JSON.stringify(servico.pecas)) : [];
+                renderPecasList();
+
+                // Clear tools list (as it's not saved per-service in the current data structure)
+                document.getElementById('ferramentas-necessarias-lista').innerHTML = '';
+
+                await populatePecasSelect('servico-peca-select');
+                openModal('servico-modal');
+
+            } catch (error) {
+                console.error("Erro ao carregar serviço para edição:", error);
+                showAlert("Não foi possível carregar os dados do serviço.");
+            }
+        };
+
+
+        function deleteCliente(id) {
+            showConfirmModal("Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/clientes`, id));
+            });
+        }
+        function deleteFornecedor(id) {
+            showConfirmModal("Tem certeza que deseja excluir este fornecedor?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/fornecedores`, id));
+            });
+        }
+        function deleteFerramenta(id) {
+            showConfirmModal("Tem certeza que deseja excluir esta ferramenta?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/ferramentas`, id));
+            });
+        }
+        function deleteVeiculo(id) {
+            showConfirmModal("Tem certeza que deseja excluir este veículo e todo o seu histórico?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/veiculos`, id));
+            });
+        }
+        function deleteProjeto(id) {
+            showConfirmModal("Tem certeza que deseja excluir este projeto e todos os seus dados?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/projetos`, id));
+            });
+        }
+        function deletePeca(id) {
+            showConfirmModal("Tem certeza que deseja excluir esta peça do catálogo?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/pecas`, id));
+            });
+        }
+        function deleteServico(veiculoId, servicoId) {
+            showConfirmModal("Tem certeza que deseja excluir este serviço do histórico?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`, servicoId));
+            });
+        }
+        function deleteServicoRapido(id) {
+            showConfirmModal("Tem certeza que deseja excluir este serviço rápido?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/servicosPadrao`, id));
+            });
+        }
         
         // --- DETALHES (VEÍCULO E PROJETO) ---
         async function showVehicleDetails(veiculoId) {
@@ -2448,6 +2578,7 @@
                             <td>${pecasHtml}</td>
                             <td>R$ ${servico.valorTotal.toFixed(2)}</td>
                             <td class="actions-cell">
+                                <button class="edit-btn" onclick="window.editServico('${veiculoId}', '${doc.id}')"><i class="fas fa-edit"></i></button>
                                 <button class="delete-btn" onclick="window.deleteServico('${veiculoId}', '${doc.id}')"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
@@ -2514,54 +2645,66 @@
             openModal('fornecedor-detalhes-modal');
         }
 
+        // --- NEW --- Renders annexes using event listeners to avoid issues with object references
         function renderAnexos(anexos, tipo) {
             const tableId = tipo === 'documento' ? 'projeto-documentos-table' : 'projeto-projetos3d-table';
             const tableBody = document.getElementById(tableId);
             if(!tableBody) return;
             tableBody.innerHTML = '';
             anexos.forEach((anexo) => {
-                // Criar uma cópia do objeto anexo para evitar problemas de referência
-                const anexoData = JSON.stringify(anexo);
-                tableBody.innerHTML += `
-                    <tr>
-                        <td><a href="${anexo.url}" target="_blank">${anexo.nome}</a></td>
-                        <td class="actions-cell">
-                            <button class="delete-btn" onclick='window.handleDeleteAnexo(event, ${anexoData})'><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><a href="${anexo.url}" target="_blank" rel="noopener noreferrer">${anexo.nome}</a></td>
+                    <td class="actions-cell">
+                        <button class="delete-btn"><i class="fas fa-trash"></i></button>
+                    </td>
                 `;
+                const deleteBtn = row.querySelector('.delete-btn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (event) => {
+                        handleDeleteAnexo(event, anexo);
+                    });
+                }
+                tableBody.appendChild(row);
             });
         }
+
         
         // --- ANEXOS ---
-        window.handleDeleteAnexo = async (event, anexo) => {
+        window.handleDeleteAnexo = (event, anexo) => {
             event.stopPropagation();
             if (!currentProjectId || !anexo) return;
             
-            try {
-                // 1. Deletar do Firebase Storage
-                const fileRef = ref(storage, anexo.fullPath);
-                await deleteObject(fileRef);
+            showConfirmModal(`Tem certeza que deseja excluir o arquivo "${anexo.nome}"?`, async () => {
+                try {
+                    // 1. Deletar do Firebase Storage
+                    const fileRef = ref(storage, anexo.fullPath);
+                    await deleteObject(fileRef);
 
-                // 2. Determinar qual array atualizar
-                const activeTab = document.querySelector('.tab-link.active').dataset.target;
-                const fieldToUpdate = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
-                
-                // 3. Remover do Firestore
-                const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
-                await updateDoc(docRef, {
-                    [fieldToUpdate]: arrayRemove(anexo)
-                });
-                
-            } catch (error) {
-                console.error("Erro ao deletar anexo:", error);
-                alert("Falha ao deletar o anexo. Se o arquivo já foi removido, a referência será apagada.");
-                 // Tenta remover a referência do Firestore mesmo se a exclusão do arquivo falhar (pode já ter sido excluído)
-                const activeTab = document.querySelector('.tab-link.active').dataset.target;
-                const fieldToUpdate = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
-                const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
-                await updateDoc(docRef, { [fieldToUpdate]: arrayRemove(anexo) });
-            }
+                    // 2. Determinar qual array atualizar
+                    const activeTab = document.querySelector('#projeto-detalhes-section .tab-link.active').dataset.target;
+                    const fieldToUpdate = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
+                    
+                    // 3. Remover do Firestore
+                    const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
+                    await updateDoc(docRef, {
+                        [fieldToUpdate]: arrayRemove(anexo)
+                    });
+                    
+                } catch (error) {
+                    console.error("Erro ao deletar anexo:", error);
+                    showAlert("Falha ao deletar o anexo. Se o arquivo já foi removido, a referência será apagada.");
+                     // Tenta remover a referência do Firestore mesmo se a exclusão do arquivo falhar (pode já ter sido excluído)
+                    try {
+                        const activeTab = document.querySelector('#projeto-detalhes-section .tab-link.active').dataset.target;
+                        const fieldToUpdate = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
+                        const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
+                        await updateDoc(docRef, { [fieldToUpdate]: arrayRemove(anexo) });
+                    } catch (firestoreError) {
+                        console.error("Erro ao remover referência do Firestore:", firestoreError);
+                    }
+                }
+            });
         };
 
         // --- ATUALIZAÇÃO DO DASHBOARD ---
@@ -2663,12 +2806,12 @@
             atividadesList.innerHTML = '';
             if(atividadesRecentes.length > 0) {
                 atividadesRecentes.sort((a,b) => b.data - a.data)
-                                  .slice(0, 5)
-                                  .forEach(a => {
-                                      const li = document.createElement('li');
-                                      li.textContent = `${a.data.toLocaleDateString()} - ${a.texto}`;
-                                      atividadesList.appendChild(li);
-                                  });
+                                     .slice(0, 5)
+                                     .forEach(a => {
+                                         const li = document.createElement('li');
+                                         li.textContent = `${a.data.toLocaleDateString()} - ${a.texto}`;
+                                         atividadesList.appendChild(li);
+                                     });
             } else {
                 atividadesList.innerHTML = '<li>Nenhuma atividade recente.</li>';
             }
@@ -2797,7 +2940,7 @@
                     const selectedIds = Array.from(document.querySelectorAll('.servico-checkbox:checked')).map(cb => cb.dataset.id);
 
                     if (selectedIds.length === 0) {
-                        alert("Por favor, selecione ao menos um serviço para gerar a nota.");
+                        showAlert("Por favor, selecione ao menos um serviço para gerar a nota.");
                         return;
                     }
 
@@ -2826,12 +2969,12 @@
                         };
 
                         const docRef = await addDoc(collection(db, `users/${currentUserId}/notas`), notaData);
-                        alert('Orçamento gerado com sucesso!');
+                        showAlert('Orçamento gerado com sucesso!');
                         await visualizarNota(docRef.id);
 
                     } catch (err) {
                         console.error("Erro ao gerar nota:", err);
-                        alert("Ocorreu um erro ao buscar os dados para a nota.");
+                        showAlert("Ocorreu um erro ao buscar os dados para a nota.");
                     }
                 });
             }
@@ -2944,13 +3087,15 @@
             await updateDoc(notaRef, { status: newStatus });
         };
         
-        window.excluirNota = async (notaId) => {
-             await deleteDoc(doc(db, `users/${currentUserId}/notas`, notaId));
+        window.excluirNota = (notaId) => {
+            showConfirmModal("Tem certeza que deseja excluir esta nota?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/notas`, notaId));
+            });
         };
         
         window.visualizarNota = async (notaId) => {
             const nota = await getDocument('notas', notaId);
-            if(!nota) { alert("Nota não encontrada"); return; }
+            if(!nota) { showAlert("Nota não encontrada"); return; }
             
             document.getElementById('nota-empresa-nome').textContent = empresaInfo.nome || 'Sua Empresa';
             document.getElementById('nota-empresa-cnpj').textContent = `CNPJ/CPF: ${empresaInfo.cnpj || 'Não informado'}`;
@@ -3040,7 +3185,7 @@
                     email: document.getElementById('empresa-email').value,
                 };
                 await setDoc(docRef, data, { merge: true });
-                alert('Informações da empresa salvas com sucesso!');
+                showAlert('Informações da empresa salvas com sucesso!');
             });
         }
         
@@ -3104,9 +3249,11 @@
             await updateDoc(docRef, { objetivos: objetivosCopy });
         }
 
-        async function deleteObjetivo(projectId, objetivo) {
-            const docRef = doc(db, `users/${currentUserId}/projetos`, projectId);
-            await updateDoc(docRef, { objetivos: arrayRemove(objetivo) });
+        function deleteObjetivo(projectId, objetivo) {
+            showConfirmModal(`Tem certeza que deseja excluir o objetivo "${objetivo.nome}"?`, async () => {
+                const docRef = doc(db, `users/${currentUserId}/projetos`, projectId);
+                await updateDoc(docRef, { objetivos: arrayRemove(objetivo) });
+            });
         }
 
         // --- UPLOAD FIREBASE STORAGE ---
@@ -3128,23 +3275,40 @@
 
             addBtn.addEventListener('click', () => uploadInput.click());
 
-            uploadInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    uploadFileToStorage(file);
+            uploadInput.addEventListener('change', async (e) => {
+                const files = e.target.files;
+                if (files.length > 0) {
+                     const uploadButton = document.getElementById('add-anexo-btn');
+                    uploadButton.disabled = true;
+                    uploadButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enviando ${files.length} arquivo(s)...`;
+
+                    const uploadPromises = [];
+                    for (const file of files) {
+                        uploadPromises.push(uploadFileToStorage(file));
+                    }
+
+                    try {
+                        await Promise.all(uploadPromises);
+                        showAlert(`${files.length} arquivo(s) enviados com sucesso!`);
+                    } catch (error) {
+                        console.error("Ocorreu um erro durante o upload de múltiplos arquivos:", error);
+                        showAlert("Ocorreu um erro ao enviar um ou mais arquivos.");
+                    } finally {
+                        uploadButton.disabled = false;
+                        uploadButton.innerHTML = '<i class="fas fa-upload"></i> Adicionar Anexo';
+                        uploadInput.value = ''; // Clear the input
+                    }
                 }
             });
         }
 
         async function uploadFileToStorage(file) {
-            if (!file || !currentProjectId) return;
-            const activeTab = document.querySelector('.tab-link.active').dataset.target;
+            if (!file || !currentProjectId) {
+                return Promise.reject(new Error("Arquivo ou ID do projeto inválido."));
+            }
+            const activeTab = document.querySelector('#projeto-detalhes-section .tab-link.active').dataset.target;
             const uploadType = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
-
-            const uploadButton = document.getElementById('add-anexo-btn');
-            uploadButton.disabled = true;
-            uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-
+            
             const storagePath = `users/${currentUserId}/projetos/${currentProjectId}/${uploadType}/${file.name}`;
             const storageRef = ref(storage, storagePath);
 
@@ -3166,13 +3330,10 @@
                 const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
                 await updateDoc(docRef, { [uploadType]: arrayUnion(novoAnexo) });
 
+                return Promise.resolve();
             } catch (error) {
-                console.error("Erro no upload para o Storage:", error);
-                alert("Falha ao enviar o arquivo.");
-            } finally {
-                uploadButton.disabled = false;
-                uploadButton.innerHTML = '<i class="fas fa-upload"></i> Adicionar Anexo';
-                document.getElementById('anexo-upload-input').value = ''; // Limpar o input
+                console.error(`Erro no upload do arquivo ${file.name}:`, error);
+                return Promise.reject(error);
             }
         }
         
@@ -3251,7 +3412,7 @@
                 
                 await addDoc(collection(db, `users/${currentUserId}/veiculos/${veiculoId}/checklists`), data);
                 closeModal('checklist-modal');
-                alert('Checklist salvo com sucesso!');
+                showAlert('Checklist salvo com sucesso!');
             });
         }
         
@@ -3287,3 +3448,4 @@
     </script>
 </body>
 </html>
+
