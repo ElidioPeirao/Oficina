@@ -25,12 +25,15 @@
         .hidden { display: none !important; }
         .auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .auth-form { background-color: var(--bg-light-dark); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; text-align: center; border-top: 4px solid var(--orange-highlight); }
+        .auth-logo { max-width: 180px; height: auto; margin-bottom: 20px; }
         .auth-form h2 { margin-bottom: 25px; }
         .input-group { margin-bottom: 20px; }
         .input-group input { width: 100%; padding: 12px 15px; background-color: var(--bg-dark); border: 1px solid var(--primary); border-radius: 8px; color: var(--text-light); font-size: 16px; }
         .auth-btn { width: 100%; padding: 12px; background-color: var(--orange-highlight); border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; }
         #auth-error { color: var(--accent); margin-top: 15px; min-height: 20px; }
-        #main-app-portal header { background-color: var(--bg-light-dark); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--primary); }
+        #main-app-portal header { background-color: var(--bg-light-dark); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--primary); }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .header-logo { max-height: 50px; height: auto; }
         #main-app-portal header h2 { font-size: 24px; }
         #main-app-portal header #client-name { color: var(--orange-highlight); }
         #logout-btn-portal { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; }
@@ -61,6 +64,7 @@
 
     <div id="login-view" class="auth-container">
         <div class="auth-form">
+            <img src="https://i.imgur.com/31xgQbN.png" alt="Logo da Empresa" class="auth-logo">
             <h2><i class="fas fa-user-circle"></i> Portal do Cliente</h2>
             <form id="login-form-portal">
                 <div class="input-group">
@@ -74,7 +78,10 @@
 
     <div id="main-app-portal" class="hidden">
         <header>
-            <h2>Bem-vindo, <span id="client-name"></span>!</h2>
+            <div class="header-left">
+                <img src="https://i.imgur.com/31xgQbN.png" alt="Logo da Empresa" class="header-logo">
+                <h2>Bem-vindo, <span id="client-name"></span>!</h2>
+            </div>
             <button id="logout-btn-portal"><i class="fas fa-sign-out-alt"></i> Sair</button>
         </header>
         <main class="portal-container">
@@ -95,7 +102,6 @@
         </main>
     </div>
 
-    <!-- Modais para Detalhes -->
     <div id="veiculo-detalhes-modal" class="modal hidden">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
