@@ -1133,20 +1133,37 @@
                         </div>
                     </form>
                 </div>
-                <h3>Gerenciar Serviços Rápidos</h3>
-                <button class="btn btn-primary" id="add-servico-rapido-btn" style="margin-bottom: 20px;"><i class="fas fa-plus"></i> Adicionar Serviço Rápido</button>
-                 <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Descrição</th>
-                                <th>Mão de Obra</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="servicos-rapidos-table"></tbody>
-                    </table>
+                <div class="section-container" style="margin-bottom: 30px;">
+                    <h3>Gerenciar Serviços Rápidos</h3>
+                    <button class="btn btn-primary" id="add-servico-rapido-btn" style="margin-bottom: 20px;"><i class="fas fa-plus"></i> Adicionar Serviço Rápido</button>
+                     <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Descrição</th>
+                                    <th>Mão de Obra</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servicos-rapidos-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="section-container">
+                     <h3>Gerenciar Objetivos Padrão de Projeto</h3>
+                    <button class="btn btn-primary" id="add-objetivo-padrao-btn" style="margin-bottom: 20px;"><i class="fas fa-plus"></i> Adicionar Objetivo Padrão</button>
+                     <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome do Objetivo</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="objetivos-padrao-table"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </main>
@@ -1284,6 +1301,13 @@
                         <option value="Concluído">Concluído</option>
                     </select>
                 </div>
+
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+                <h4>Objetivos do Projeto</h4>
+                <div id="objetivos-padrao-selecao-container" class="checklist-grid" style="margin-top: 15px;">
+                    <!-- Checkboxes de objetivos padrão serão inseridos aqui -->
+                </div>
+
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">Salvar</button>
                 </div>
@@ -1293,7 +1317,7 @@
 
     <!-- Modal Peça -->
     <div id="peca-modal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 850px;">
             <span class="close-btn">&times;</span>
             <h3 id="peca-modal-title">Adicionar Peça</h3>
             <form id="peca-form">
@@ -1325,6 +1349,18 @@
                         <select id="peca-fornecedor"></select>
                     </div>
                 </div>
+
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+                <h4>Associar a Veículos Específicos</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(4, 1fr) auto; align-items: end; gap: 15px;">
+                    <div class="form-group"><label for="peca-assoc-marca">Marca</label><input type="text" id="peca-assoc-marca"></div>
+                    <div class="form-group"><label for="peca-assoc-modelo">Modelo</label><input type="text" id="peca-assoc-modelo"></div>
+                    <div class="form-group"><label for="peca-assoc-ano-inicio">De (Ano)</label><input type="number" id="peca-assoc-ano-inicio"></div>
+                    <div class="form-group"><label for="peca-assoc-ano-fim">Até (Ano)</label><input type="number" id="peca-assoc-ano-fim"></div>
+                    <button type="button" id="add-assoc-peca-btn" class="btn btn-primary">Adicionar</button>
+                </div>
+                <ul id="associacoes-peca-lista" class="pecas-lista"></ul>
+
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">Salvar Peça</button>
                 </div>
@@ -1416,6 +1452,11 @@
             <span class="close-btn">&times;</span>
             <h3 id="servico-modal-title">Adicionar/Editar Serviço</h3>
             
+            <div id="servicos-sugeridos-container" class="hidden" style="margin-bottom: 20px;">
+                 <h4>Serviços Sugeridos</h4>
+                 <!-- Botões de serviços sugeridos -->
+            </div>
+            
             <div id="servicos-rapidos-container" style="margin-bottom: 20px;">
                 <h4>Serviços Rápidos</h4>
                 <!-- Os botões serão gerados dinamicamente aqui -->
@@ -1434,6 +1475,12 @@
                 <hr style="border-color: var(--primary); margin: 20px 0;">
                 
                 <h4>Peças Utilizadas</h4>
+
+                <div id="pecas-sugeridas-container" class="hidden" style="margin-bottom: 20px;">
+                     <h4>Peças Sugeridas</h4>
+                     <!-- Botões de peças sugeridas -->
+                </div>
+
                 <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; align-items: end; gap: 15px;">
                      <div class="form-group">
                         <label for="servico-peca-select">Peça</label>
@@ -1474,7 +1521,7 @@
     
     <!-- Modal Serviço Rápido (para CRUD) -->
     <div id="servico-rapido-modal" class="modal hidden">
-        <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-content" style="max-width: 850px;">
             <span class="close-btn">&times;</span>
             <h3 id="servico-rapido-modal-title">Adicionar Serviço Rápido</h3>
             <form id="servico-rapido-form">
@@ -1521,6 +1568,19 @@
                     <button type="button" id="add-ferramenta-servico-rapido-btn" class="btn btn-primary">Adicionar Ferramenta</button>
                 </div>
                 <ul id="ferramentas-servico-rapido-lista" class="pecas-lista"></ul>
+                
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+
+                <h4>Associar a Veículos Específicos</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(4, 1fr) auto; align-items: end; gap: 15px;">
+                    <div class="form-group"><label for="servico-rapido-assoc-marca">Marca</label><input type="text" id="servico-rapido-assoc-marca"></div>
+                    <div class="form-group"><label for="servico-rapido-assoc-modelo">Modelo</label><input type="text" id="servico-rapido-assoc-modelo"></div>
+                    <div class="form-group"><label for="servico-rapido-assoc-ano-inicio">De (Ano)</label><input type="number" id="servico-rapido-assoc-ano-inicio"></div>
+                    <div class="form-group"><label for="servico-rapido-assoc-ano-fim">Até (Ano)</label><input type="number" id="servico-rapido-assoc-ano-fim"></div>
+                    <button type="button" id="add-assoc-servico-rapido-btn" class="btn btn-primary">Adicionar</button>
+                </div>
+                <ul id="associacoes-servico-rapido-lista" class="pecas-lista"></ul>
+
 
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">Salvar</button>
@@ -1654,6 +1714,24 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Objetivo Padrão -->
+    <div id="objetivo-padrao-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-btn">&times;</span>
+            <h3 id="objetivo-padrao-modal-title">Adicionar Objetivo Padrão</h3>
+            <form id="objetivo-padrao-form">
+                <input type="hidden" id="objetivo-padrao-id">
+                <div class="form-group full-width">
+                    <label for="objetivo-padrao-nome">Nome do Objetivo</label>
+                    <input type="text" id="objetivo-padrao-nome" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
     <script type="module">
         // Importar os módulos do Firebase (versão atualizada)
@@ -1715,20 +1793,21 @@
         let checklistsUnsubscribe = null;
         let projetoDetalhesUnsubscribe = null;
         let pecasSelecionadas = [];
-        let pecasServicoRapido = [];
-        let ferramentasServicoRapido = [];
+        let associacoesAtuais = [];
         let catalogoPecas = [];
         let catalogoFerramentas = [];
         let servicosRapidos = [];
+        let objetivosPadraoCatalogo = [];
+        let veiculoAtual = null;
         let currentProjectId = null; // Para saber em qual projeto adicionar anexo
         let empresaInfo = {};
         let confirmCallback = null; // Variável para o callback de confirmação
 
         const defaultServicosPadrao = [
-            { nome: 'Troca de Óleo e Filtro', descricao: 'Troca de óleo do motor e filtro de óleo.', maoDeObra: 50.00, pecas: [], ferramentas: [] },
-            { nome: 'Alinhamento e Balanceamento', descricao: 'Alinhamento da suspensão e balanceamento das 4 rodas.', maoDeObra: 120.00, pecas: [], ferramentas: [] },
-            { nome: 'Troca de Pastilhas de Freio', descricao: 'Substituição das pastilhas de freio dianteiras.', maoDeObra: 80.00, pecas: [], ferramentas: [] },
-            { nome: 'Revisão Básica', descricao: 'Verificação de níveis, filtros e itens de segurança.', maoDeObra: 150.00, pecas: [], ferramentas: [] },
+            { nome: 'Troca de Óleo e Filtro', descricao: 'Troca de óleo do motor e filtro de óleo.', maoDeObra: 50.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
+            { nome: 'Alinhamento e Balanceamento', descricao: 'Alinhamento da suspensão e balanceamento das 4 rodas.', maoDeObra: 120.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
+            { nome: 'Troca de Pastilhas de Freio', descricao: 'Substituição das pastilhas de freio dianteiras.', maoDeObra: 80.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
+            { nome: 'Revisão Básica', descricao: 'Verificação de níveis, filtros e itens de segurança.', maoDeObra: 150.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
         ];
 
         // --- Declarações de funções de renderização ---
@@ -1739,6 +1818,8 @@
         const renderFerramentaRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.tipo}</td><td>${data.localizacao || 'N/A'}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
         const renderFornecedorRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.telefone || 'N/A'}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
         const renderServicoRapidoRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td>${data.descricao}</td><td>R$ ${data.maoDeObra.toFixed(2)}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+        const renderObjetivoPadraoRow = (id, data) => `<tr data-id="${id}"><td>${data.nome}</td><td class="actions-cell"><button class="edit-btn" data-id="${id}"><i class="fas fa-edit"></i></button><button class="delete-btn" data-id="${id}"><i class="fas fa-trash"></i></button></td></tr>`;
+
 
         const renderServicosRapidosButtons = () => {
             const container = document.getElementById('servicos-rapidos-container');
@@ -1777,36 +1858,21 @@
             });
         }
 
-        function renderPecasServicoRapidoList() {
-            const listaUI = document.getElementById('pecas-servico-rapido-lista');
+        function renderAssociacoes(listaId, renderer) {
+            const listaUI = document.getElementById(listaId);
             listaUI.innerHTML = '';
+            associacoesAtuais.forEach((assoc, index) => {
+                listaUI.innerHTML += renderer(assoc, index);
+            });
+            listaUI.querySelectorAll('.remover-peca-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    associacoesAtuais.splice(e.currentTarget.dataset.index, 1);
+                    renderAssociacoes(listaId, renderer);
+                });
+            });
+        }
 
-            pecasServicoRapido.forEach((peca, index) => {
-                const itemTotal = peca.quantidade * peca.precoUnitario;
-                listaUI.innerHTML += `<li><span>${peca.quantidade} ${peca.unidade}(s) de ${peca.nome}</span><span>R$ ${itemTotal.toFixed(2)}</span><button type="button" class="remover-peca-btn" data-index="${index}"><i class="fas fa-times"></i></button></li>`;
-            });
-            
-            listaUI.querySelectorAll('.remover-peca-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    pecasServicoRapido.splice(e.currentTarget.dataset.index, 1);
-                    renderPecasServicoRapidoList();
-                });
-            });
-        }
-        
-        function renderFerramentasServicoRapidoList() {
-            const listaUI = document.getElementById('ferramentas-servico-rapido-lista');
-            listaUI.innerHTML = '';
-            ferramentasServicoRapido.forEach((ferramenta, index) => {
-                listaUI.innerHTML += `<li><span>${ferramenta.nome}</span><button type="button" class="remover-peca-btn" data-index="${index}"><i class="fas fa-times"></i></button></li>`;
-            });
-            listaUI.querySelectorAll('.remover-peca-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    ferramentasServicoRapido.splice(e.currentTarget.dataset.index, 1);
-                    renderFerramentasServicoRapidoList();
-                });
-            });
-        }
+        const renderAssociacaoRow = (assoc, index) => `<li><span>${assoc.marca} / ${assoc.modelo} (${assoc.anoInicio} - ${assoc.anoFim})</span><button type="button" class="remover-peca-btn" data-index="${index}"><i class="fas fa-times"></i></button></li>`;
 
 
         // --- LÓGICA DE CONFIRMAÇÃO ---
@@ -1968,6 +2034,7 @@
              document.getElementById('projeto-form').reset();
              document.getElementById('projeto-id').value = '';
              populateClientesSelect('projeto-cliente', 'Industrial');
+             renderObjetivosPadraoSelecao();
              openModal('projeto-modal');
         });
 
@@ -1979,6 +2046,7 @@
             renderPecasList();
             document.getElementById('ferramentas-necessarias-lista').innerHTML = '';
             populatePecasSelect('servico-peca-select');
+            renderizarSugestoes();
             openModal('servico-modal');
         });
 
@@ -1986,6 +2054,8 @@
              document.getElementById('peca-modal-title').textContent = "Adicionar Peça";
              document.getElementById('peca-form').reset();
              document.getElementById('peca-id').value = '';
+             associacoesAtuais = [];
+             renderAssociacoes('associacoes-peca-lista', renderAssociacaoRow);
              populateFornecedoresSelect('peca-fornecedor');
              openModal('peca-modal');
         });
@@ -2008,13 +2078,18 @@
             document.getElementById('servico-rapido-modal-title').textContent = "Adicionar Serviço Rápido";
             document.getElementById('servico-rapido-form').reset();
             document.getElementById('servico-rapido-id').value = '';
-            pecasServicoRapido = [];
-            ferramentasServicoRapido = [];
-            renderPecasServicoRapidoList();
-            renderFerramentasServicoRapidoList();
+            associacoesAtuais = [];
+            renderAssociacoes('associacoes-servico-rapido-lista', renderAssociacaoRow);
             populatePecasSelect('servico-rapido-peca-select');
             populateFerramentasSelect('servico-rapido-ferramenta-select');
             openModal('servico-rapido-modal');
+        });
+
+        document.getElementById('add-objetivo-padrao-btn').addEventListener('click', () => {
+            document.getElementById('objetivo-padrao-modal-title').textContent = "Adicionar Objetivo Padrão";
+            document.getElementById('objetivo-padrao-form').reset();
+            document.getElementById('objetivo-padrao-id').value = '';
+            openModal('objetivo-padrao-modal');
         });
 
         async function populateClientesSelect(selectId, segmento = 'Automotivo') {
@@ -2091,12 +2166,7 @@
                 docId = docRef.id;
             }
 
-            // Create/update client index for portal login
-            await setDoc(doc(db, `client_index`, cpf), {
-                userId: currentUserId,
-                clienteId: docId
-            });
-
+            await setDoc(doc(db, `client_index`, cpf), { userId: currentUserId, clienteId: docId });
             closeModal('cliente-modal');
         });
         
@@ -2110,17 +2180,17 @@
                     placa: document.getElementById('veiculo-placa').value.toUpperCase(),
                     marca: document.getElementById('veiculo-marca').value,
                     modelo: document.getElementById('veiculo-modelo').value,
-                    ano: document.getElementById('veiculo-ano').value,
+                    ano: parseInt(document.getElementById('veiculo-ano').value),
                     quilometragem: parseInt(document.getElementById('veiculo-quilometragem').value, 10),
                     proprietarioId: proprietarioSelect.value,
                     proprietarioNome: proprietarioSelect.options[proprietarioSelect.selectedIndex].text,
                     status: document.getElementById('veiculo-status').value,
-                    createdAt: Timestamp.now()
                 };
 
                 if (id) {
                     await updateDoc(doc(db, `users/${currentUserId}/veiculos`, id), data);
                 } else {
+                    data.createdAt = Timestamp.now();
                     await addDoc(collection(db, `users/${currentUserId}/veiculos`), data);
                 }
                 closeModal('veiculo-modal');
@@ -2142,22 +2212,28 @@
                     valor: parseFloat(document.getElementById('projeto-valor').value),
                     descricao: document.getElementById('projeto-descricao').value,
                     status: document.getElementById('projeto-status').value,
-                    createdAt: Timestamp.now()
                 };
+                
+                const objetivosSelecionados = [];
+                document.querySelectorAll('#objetivos-padrao-selecao-container input[type="checkbox"]:checked').forEach(cb => {
+                    objetivosSelecionados.push({ nome: cb.dataset.nome, concluido: false });
+                });
+
 
                 if (id) {
                     const docExistente = await getDoc(doc(db, `users/${currentUserId}/projetos`, id));
-                    const dadosAtuais = docExistente.data();
                     if (docExistente.exists()) {
+                        const dadosAtuais = docExistente.data();
                         data.documentos = dadosAtuais.documentos || [];
                         data.projetos3d = dadosAtuais.projetos3d || [];
                         data.objetivos = dadosAtuais.objetivos || [];
                     }
                     await updateDoc(doc(db, `users/${currentUserId}/projetos`, id), data);
                 } else {
+                    data.createdAt = Timestamp.now();
                     data.documentos = [];
                     data.projetos3d = [];
-                    data.objetivos = [];
+                    data.objetivos = objetivosSelecionados;
                     await addDoc(collection(db, `users/${currentUserId}/projetos`), data);
                 }
                 closeModal('projeto-modal');
@@ -2204,6 +2280,7 @@
                 unidade: document.getElementById('peca-unidade').value,
                 fornecedorId: fornecedorSelect.value,
                 fornecedorNome: fornecedorSelect.selectedIndex > 0 ? fornecedorSelect.options[fornecedorSelect.selectedIndex].text : "N/A",
+                associacoesVeiculos: associacoesAtuais
             };
 
              if (id) {
@@ -2257,8 +2334,9 @@
                 nome: document.getElementById('servico-rapido-nome').value,
                 descricao: document.getElementById('servico-rapido-descricao').value,
                 maoDeObra: parseFloat(document.getElementById('servico-rapido-valor-mao-de-obra').value),
-                pecas: pecasServicoRapido,
-                ferramentas: ferramentasServicoRapido
+                pecas: [], // peças padrão não são mais aqui, apenas no serviço real
+                ferramentas: [], // ferramentas padrão não são mais aqui
+                associacoesVeiculos: associacoesAtuais
             };
 
             if (id) {
@@ -2267,6 +2345,21 @@
                 await addDoc(collection(db, `users/${currentUserId}/servicosPadrao`), data);
             }
             closeModal('servico-rapido-modal');
+        });
+
+        const objetivoPadraoForm = document.getElementById('objetivo-padrao-form');
+        objetivoPadraoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('objetivo-padrao-id').value;
+            const data = {
+                nome: document.getElementById('objetivo-padrao-nome').value,
+            };
+            if (id) {
+                await updateDoc(doc(db, `users/${currentUserId}/objetivosPadrao`, id), data);
+            } else {
+                await addDoc(collection(db, `users/${currentUserId}/objetivosPadrao`), data);
+            }
+            closeModal('objetivo-padrao-modal');
         });
         
         // --- LISTENERS E RENDERIZAÇÃO ---
@@ -2305,8 +2398,7 @@
                 servicosRapidos = [];
                 snapshot.forEach(doc => servicosRapidos.push({ id: doc.id, ...doc.data()}));
                 
-                if (snapshot.empty) {
-                    // Populate with defaults if it's the first time
+                if (snapshot.empty && defaultServicosPadrao.length > 0) {
                     const batch = writeBatch(db);
                     defaultServicosPadrao.forEach(servico => {
                         const docRef = doc(collection(db, `users/${currentUserId}/servicosPadrao`));
@@ -2319,11 +2411,18 @@
                 }
             });
 
+            onSnapshot(query(collection(db, `users/${currentUserId}/objetivosPadrao`), orderBy("nome")), (snapshot) => {
+                objetivosPadraoCatalogo = [];
+                snapshot.forEach(doc => objetivosPadraoCatalogo.push({ id: doc.id, ...doc.data()}));
+                renderTable(snapshot, 'objetivos-padrao-table', renderObjetivoPadraoRow, [['.edit-btn', editObjetivoPadrao], ['.delete-btn', deleteObjetivoPadrao]]);
+            });
+
             setupSearchListeners();
             setupNotaListeners();
             setupEmpresaInfoListener();
             setupObjetivosListeners();
             setupChecklistListeners();
+            setupAssociacaoListeners();
             onSnapshot(collection(db, `users/${currentUserId}/veiculos`), updateDashboard);
             onSnapshot(collection(db, `users/${currentUserId}/projetos`), updateDashboard);
             onSnapshot(collection(db, `users/${currentUserId}/notas`), updateDashboard);
@@ -2363,7 +2462,7 @@
             }
             const docRef = doc(db, path);
             const docSnap = await getDoc(docRef);
-            return docSnap.exists() ? docSnap.data() : null;
+            return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
         }
 
         async function editCliente(id) {
@@ -2430,6 +2529,7 @@
             document.getElementById('projeto-valor').value = data.valor;
             document.getElementById('projeto-descricao').value = data.descricao;
             document.getElementById('projeto-status').value = data.status;
+            renderObjetivosPadraoSelecao();
             openModal('projeto-modal');
         }
 
@@ -2442,6 +2542,8 @@
             document.getElementById('peca-marca').value = data.marca;
             document.getElementById('peca-preco').value = data.preco;
             document.getElementById('peca-unidade').value = data.unidade;
+            associacoesAtuais = data.associacoesVeiculos || [];
+            renderAssociacoes('associacoes-peca-lista', renderAssociacaoRow);
             await populateFornecedoresSelect('peca-fornecedor');
             document.getElementById('peca-fornecedor').value = data.fornecedorId;
             openModal('peca-modal');
@@ -2456,18 +2558,21 @@
             document.getElementById('servico-rapido-descricao').value = data.descricao;
             document.getElementById('servico-rapido-valor-mao-de-obra').value = data.maoDeObra;
             
-            pecasServicoRapido = Array.isArray(data.pecas) ? data.pecas : [];
-            ferramentasServicoRapido = Array.isArray(data.ferramentas) ? data.ferramentas : [];
-            
-            populatePecasSelect('servico-rapido-peca-select');
-            populateFerramentasSelect('servico-rapido-ferramenta-select');
-            renderPecasServicoRapidoList();
-            renderFerramentasServicoRapidoList();
+            associacoesAtuais = data.associacoesVeiculos || [];
+            renderAssociacoes('associacoes-servico-rapido-lista', renderAssociacaoRow);
 
             openModal('servico-rapido-modal');
         }
+        
+        async function editObjetivoPadrao(id) {
+            const data = await getDocument('objetivosPadrao', id);
+            if (!data) return;
+            document.getElementById('objetivo-padrao-modal-title').textContent = "Editar Objetivo Padrão";
+            document.getElementById('objetivo-padrao-id').value = id;
+            document.getElementById('objetivo-padrao-nome').value = data.nome;
+            openModal('objetivo-padrao-modal');
+        }
 
-        // --- NEW --- Function to open service modal for editing
         window.editServico = async (veiculoId, servicoId) => {
             try {
                 const servico = await getDocument('veiculos', veiculoId, { name: 'servicos', id: servicoId });
@@ -2476,7 +2581,6 @@
                     return;
                 }
 
-                // Populate the form
                 document.getElementById('servico-form').reset();
                 document.getElementById('servico-modal-title').textContent = "Editar Serviço";
                 document.getElementById('servico-id').value = servicoId;
@@ -2484,11 +2588,10 @@
                 document.getElementById('servico-descricao').value = servico.descricao;
                 document.getElementById('servico-valor-mao-de-obra').value = servico.valorMaoDeObra.toFixed(2);
                 
-                // Populate parts
                 pecasSelecionadas = Array.isArray(servico.pecas) ? JSON.parse(JSON.stringify(servico.pecas)) : [];
                 renderPecasList();
+                renderizarSugestoes();
 
-                // Clear tools list (as it's not saved per-service in the current data structure)
                 document.getElementById('ferramentas-necessarias-lista').innerHTML = '';
 
                 await populatePecasSelect('servico-peca-select');
@@ -2541,20 +2644,25 @@
                 await deleteDoc(doc(db, `users/${currentUserId}/servicosPadrao`, id));
             });
         }
+        function deleteObjetivoPadrao(id) {
+            showConfirmModal("Tem certeza que deseja excluir este objetivo padrão?", async () => {
+                await deleteDoc(doc(db, `users/${currentUserId}/objetivosPadrao`, id));
+            });
+        }
         
         // --- DETALHES (VEÍCULO E PROJETO) ---
         async function showVehicleDetails(veiculoId) {
-             const veiculo = await getDocument('veiculos', veiculoId);
-            if (!veiculo) return;
+             veiculoAtual = await getDocument('veiculos', veiculoId);
+            if (!veiculoAtual) return;
 
             navigateTo('veiculo-detalhes');
             
-            document.getElementById('veiculo-detalhe-titulo').textContent = `${veiculo.marca} ${veiculo.modelo} - ${veiculo.placa}`;
-            document.getElementById('detalhe-placa').textContent = veiculo.placa;
-            document.getElementById('detalhe-marca-modelo').textContent = `${veiculo.marca} / ${veiculo.modelo}`;
-            document.getElementById('detalhe-ano').textContent = veiculo.ano;
-            document.getElementById('detalhe-quilometragem').textContent = `${veiculo.quilometragem ? veiculo.quilometragem.toLocaleString('pt-BR') : 'N/A'} km`;
-            document.getElementById('detalhe-proprietario').textContent = veiculo.proprietarioNome;
+            document.getElementById('veiculo-detalhe-titulo').textContent = `${veiculoAtual.marca} ${veiculoAtual.modelo} - ${veiculoAtual.placa}`;
+            document.getElementById('detalhe-placa').textContent = veiculoAtual.placa;
+            document.getElementById('detalhe-marca-modelo').textContent = `${veiculoAtual.marca} / ${veiculoAtual.modelo}`;
+            document.getElementById('detalhe-ano').textContent = veiculoAtual.ano;
+            document.getElementById('detalhe-quilometragem').textContent = `${veiculoAtual.quilometragem ? veiculoAtual.quilometragem.toLocaleString('pt-BR') : 'N/A'} km`;
+            document.getElementById('detalhe-proprietario').textContent = veiculoAtual.proprietarioNome;
             document.getElementById('servico-veiculo-id').value = veiculoId;
             document.getElementById('checklist-veiculo-id').value = veiculoId;
 
@@ -2645,7 +2753,6 @@
             openModal('fornecedor-detalhes-modal');
         }
 
-        // --- NEW --- Renders annexes using event listeners to avoid issues with object references
         function renderAnexos(anexos, tipo) {
             const tableId = tipo === 'documento' ? 'projeto-documentos-table' : 'projeto-projetos3d-table';
             const tableBody = document.getElementById(tableId);
@@ -2677,24 +2784,18 @@
             
             showConfirmModal(`Tem certeza que deseja excluir o arquivo "${anexo.nome}"?`, async () => {
                 try {
-                    // 1. Deletar do Firebase Storage
                     const fileRef = ref(storage, anexo.fullPath);
                     await deleteObject(fileRef);
 
-                    // 2. Determinar qual array atualizar
                     const activeTab = document.querySelector('#projeto-detalhes-section .tab-link.active').dataset.target;
                     const fieldToUpdate = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
                     
-                    // 3. Remover do Firestore
                     const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
-                    await updateDoc(docRef, {
-                        [fieldToUpdate]: arrayRemove(anexo)
-                    });
+                    await updateDoc(docRef, { [fieldToUpdate]: arrayRemove(anexo) });
                     
                 } catch (error) {
                     console.error("Erro ao deletar anexo:", error);
                     showAlert("Falha ao deletar o anexo. Se o arquivo já foi removido, a referência será apagada.");
-                     // Tenta remover a referência do Firestore mesmo se a exclusão do arquivo falhar (pode já ter sido excluído)
                     try {
                         const activeTab = document.querySelector('#projeto-detalhes-section .tab-link.active').dataset.target;
                         const fieldToUpdate = activeTab === 'documentos-tab' ? 'documentos' : 'projetos3d';
@@ -2841,7 +2942,7 @@
             const quantidade = parseFloat(document.getElementById('servico-peca-qtd').value);
 
             if (!pecaId || !quantidade) {
-                console.error('Selecione uma peça e informe a quantidade.');
+                showAlert('Selecione uma peça e informe a quantidade.');
                 return;
             }
 
@@ -2860,47 +2961,6 @@
             }
         });
         
-        document.getElementById('add-peca-servico-rapido-btn').addEventListener('click', () => {
-            const pecaSelect = document.getElementById('servico-rapido-peca-select');
-            const pecaId = pecaSelect.value;
-            const quantidade = parseFloat(document.getElementById('servico-rapido-peca-qtd').value);
-
-            if (!pecaId || !quantidade) {
-                 console.error('Selecione uma peça e informe a quantidade.');
-                return;
-            }
-
-            const pecaOriginal = catalogoPecas.find(p => p.id === pecaId);
-            if (pecaOriginal) {
-                pecasServicoRapido.push({
-                    pecaId: pecaOriginal.id,
-                    nome: pecaOriginal.nome,
-                    quantidade: quantidade,
-                    precoUnitario: pecaOriginal.preco,
-                    unidade: pecaOriginal.unidade
-                });
-                renderPecasServicoRapidoList();
-                 pecaSelect.value = '';
-                document.getElementById('servico-rapido-peca-qtd').value = 1;
-            }
-        });
-
-        document.getElementById('add-ferramenta-servico-rapido-btn').addEventListener('click', () => {
-            const ferramentaSelect = document.getElementById('servico-rapido-ferramenta-select');
-            const ferramentaId = ferramentaSelect.value;
-
-            if (!ferramentaId) return;
-            
-            const ferramentaOriginal = catalogoFerramentas.find(f => f.id === ferramentaId);
-            if(ferramentaOriginal && !ferramentasServicoRapido.find(f => f.id === ferramentaId)) {
-                ferramentasServicoRapido.push({
-                    id: ferramentaOriginal.id,
-                    nome: ferramentaOriginal.nome
-                });
-                renderFerramentasServicoRapidoList();
-            }
-        });
-
         // --- SERVIÇOS RÁPIDOS ---
         function preencherServicoFormComRapido(servico) {
             document.getElementById('servico-descricao').value = servico.descricao;
@@ -2950,7 +3010,7 @@
                         
                         const servicosPromises = selectedIds.map(id => getDoc(doc(db, `users/${currentUserId}/veiculos/${veiculoId}/servicos`, id)));
                         const servicosDocs = await Promise.all(servicosPromises);
-                        const servicos = servicosDocs.map(d => d.data());
+                        const servicos = servicosDocs.map(d => ({id: d.id, ...d.data()}));
                         const valorTotal = servicos.reduce((acc, srv) => acc + srv.valorTotal, 0);
 
                         const notaData = {
@@ -3211,6 +3271,21 @@
             });
         }
 
+        function renderObjetivosPadraoSelecao() {
+            const container = document.getElementById('objetivos-padrao-selecao-container');
+            container.innerHTML = '';
+            if (objetivosPadraoCatalogo.length === 0) {
+                container.innerHTML = '<p>Nenhum objetivo padrão cadastrado.</p>';
+                return;
+            }
+            objetivosPadraoCatalogo.forEach(obj => {
+                const div = document.createElement('div');
+                div.className = 'checklist-item';
+                div.innerHTML = `<input type="checkbox" id="obj-padrao-${obj.id}" data-nome="${obj.nome}"> <label for="obj-padrao-${obj.id}">${obj.nome}</label>`;
+                container.appendChild(div);
+            });
+        }
+
         function renderObjetivos(objetivos, projectId) {
             const listaUI = document.getElementById('objetivos-lista');
             listaUI.innerHTML = '';
@@ -3313,20 +3388,16 @@
             const storageRef = ref(storage, storagePath);
 
             try {
-                // 1. Fazer upload do arquivo
                 const snapshot = await uploadBytes(storageRef, file);
-                // 2. Obter a URL de download
                 const downloadURL = await getDownloadURL(snapshot.ref);
 
-                // 3. Preparar o objeto para salvar no Firestore
                 const novoAnexo = {
                     nome: file.name,
                     url: downloadURL,
-                    fullPath: storagePath, // Salvar o caminho para facilitar a exclusão
+                    fullPath: storagePath,
                     createdAt: Timestamp.now()
                 };
 
-                // 4. Atualizar o documento do projeto no Firestore
                 const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
                 await updateDoc(docRef, { [uploadType]: arrayUnion(novoAnexo) });
 
@@ -3425,7 +3496,6 @@
             document.getElementById('checklist-id').value = checklistId;
             document.getElementById('checklist-modal-title').textContent = `Checklist - ${new Date(checklist.createdAt.seconds * 1000).toLocaleDateString()}`;
 
-            // Populate form
             for(const key in checklist.itens) {
                 const element = document.getElementById(`check-${key}`);
                 if(element) element.checked = checklist.itens[key];
@@ -3434,7 +3504,6 @@
             document.getElementById('check-obs-internas').value = checklist.obsInternas || '';
             document.getElementById('check-combustivel').value = checklist.combustivel || 50;
             
-            // Handle signature display
             document.getElementById('signature-canvas').classList.add('hidden');
             document.getElementById('clear-signature-btn').classList.add('hidden');
             const savedImg = document.getElementById('saved-signature-img');
@@ -3443,6 +3512,98 @@
 
             document.getElementById('checklist-save-btn').classList.add('hidden');
             openModal('checklist-modal');
+        }
+
+        // --- ASSOCIAÇÕES DE VEÍCULOS ---
+        function setupAssociacaoListeners() {
+            document.getElementById('add-assoc-servico-rapido-btn').addEventListener('click', () => addAssociacao('servico-rapido-assoc', 'associacoes-servico-rapido-lista'));
+            document.getElementById('add-assoc-peca-btn').addEventListener('click', () => addAssociacao('peca-assoc', 'associacoes-peca-lista'));
+        }
+
+        function addAssociacao(prefix, listId) {
+            const marca = document.getElementById(`${prefix}-marca`).value.trim();
+            const modelo = document.getElementById(`${prefix}-modelo`).value.trim();
+            const anoInicio = document.getElementById(`${prefix}-ano-inicio`).value;
+            const anoFim = document.getElementById(`${prefix}-ano-fim`).value;
+
+            if (!marca || !modelo || !anoInicio || !anoFim) {
+                showAlert("Preencha todos os campos da associação.");
+                return;
+            }
+
+            associacoesAtuais.push({ marca, modelo, anoInicio: parseInt(anoInicio), anoFim: parseInt(anoFim) });
+            renderAssociacoes(listId, renderAssociacaoRow);
+
+            document.getElementById(`${prefix}-marca`).value = '';
+            document.getElementById(`${prefix}-modelo`).value = '';
+            document.getElementById(`${prefix}-ano-inicio`).value = '';
+            document.getElementById(`${prefix}-ano-fim`).value = '';
+        }
+
+        function renderizarSugestoes() {
+            const servicosSugeridosContainer = document.getElementById('servicos-sugeridos-container');
+            const pecasSugeridasContainer = document.getElementById('pecas-sugeridas-container');
+            
+            servicosSugeridosContainer.innerHTML = '<h4>Serviços Sugeridos</h4>';
+            pecasSugeridasContainer.innerHTML = '<h4>Peças Sugeridas</h4>';
+
+            let algumaSugestaoServico = false;
+            let algumaSugestaoPeca = false;
+
+            if (!veiculoAtual) {
+                servicosSugeridosContainer.classList.add('hidden');
+                pecasSugeridasContainer.classList.add('hidden');
+                return;
+            }
+
+            const { marca, modelo, ano } = veiculoAtual;
+
+            servicosRapidos.forEach(servico => {
+                if (Array.isArray(servico.associacoesVeiculos)) {
+                    const compativel = servico.associacoesVeiculos.some(assoc => 
+                        marca.toLowerCase() === assoc.marca.toLowerCase() &&
+                        modelo.toLowerCase() === assoc.modelo.toLowerCase() &&
+                        ano >= assoc.anoInicio && ano <= assoc.anoFim
+                    );
+                    if (compativel) {
+                        algumaSugestaoServico = true;
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'servico-rapido-btn';
+                        btn.textContent = `Sugerido: ${servico.nome}`;
+                        btn.addEventListener('click', () => preencherServicoFormComRapido(servico));
+                        servicosSugeridosContainer.appendChild(btn);
+                    }
+                }
+            });
+
+            catalogoPecas.forEach(peca => {
+                if(Array.isArray(peca.associacoesVeiculos)) {
+                     const compativel = peca.associacoesVeiculos.some(assoc => 
+                        marca.toLowerCase() === assoc.marca.toLowerCase() &&
+                        modelo.toLowerCase() === assoc.modelo.toLowerCase() &&
+                        ano >= assoc.anoInicio && ano <= assoc.anoFim
+                    );
+                    if (compativel) {
+                        algumaSugestaoPeca = true;
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'servico-rapido-btn';
+                        btn.textContent = `Sugerido: ${peca.nome}`;
+                        btn.addEventListener('click', () => {
+                            pecasSelecionadas.push({
+                                pecaId: peca.id, nome: peca.nome, quantidade: 1, 
+                                precoUnitario: peca.preco, unidade: peca.unidade
+                            });
+                            renderPecasList();
+                        });
+                        pecasSugeridasContainer.appendChild(btn);
+                    }
+                }
+            });
+
+            servicosSugeridosContainer.classList.toggle('hidden', !algumaSugestaoServico);
+            pecasSugeridasContainer.classList.toggle('hidden', !algumaSugestaoPeca);
         }
 
     </script>
