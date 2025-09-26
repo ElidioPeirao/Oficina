@@ -46,6 +46,8 @@
         .detail-item span { font-size: 18px; }
         .progress-bar-background { width: 100%; background-color: var(--bg-dark); border-radius: 20px; height: 20px; overflow: hidden; border: 1px solid var(--primary); }
         .progress-bar-fill { height: 100%; background-color: var(--green-success); border-radius: 20px; transition: width 0.5s; }
+        ul { list-style: none; padding-left: 0; }
+        #projeto-detalhes-content ul li, #servicos-veiculo-list ul li { padding: 5px; }
         .objetivo-texto.concluido { text-decoration: line-through; color: var(--text-muted); }
         .checklist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .checklist-item { display: flex; align-items: center; gap: 10px; }
@@ -128,8 +130,8 @@
 
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, doc, getDoc, getDocs, query, where, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, doc, getDoc, getDocs, query, where, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBCoUHQ0SwXH5QZgm35gWCtcPdAZPl3Xvw",
@@ -352,13 +354,45 @@
                 `;
             }
 
+            // Filtrar e renderizar documentos visíveis
+            let documentosHTML = '<p>Nenhum documento disponível.</p>';
+            if (Array.isArray(projeto.documentos) && projeto.documentos.length > 0) {
+                const documentosVisiveis = projeto.documentos.filter(doc => doc.visivelParaCliente === true);
+                if (documentosVisiveis.length > 0) {
+                    documentosHTML = '<ul>';
+                    documentosVisiveis.forEach(doc => {
+                        documentosHTML += `<li><a href="${doc.url}" target="_blank" rel="noopener noreferrer">${doc.nome}</a></li>`;
+                    });
+                    documentosHTML += '</ul>';
+                }
+            }
+
+            // Filtrar e renderizar projetos 3D visíveis
+            let projetos3dHTML = '<p>Nenhum projeto 3D disponível.</p>';
+            if (Array.isArray(projeto.projetos3d) && projeto.projetos3d.length > 0) {
+                const projetos3dVisiveis = projeto.projetos3d.filter(proj => proj.visivelParaCliente === true);
+                if (projetos3dVisiveis.length > 0) {
+                    projetos3dHTML = '<ul>';
+                    projetos3dVisiveis.forEach(proj => {
+                        projetos3dHTML += `<li><a href="${proj.url}" target="_blank" rel="noopener noreferrer">${proj.nome}</a></li>`;
+                    });
+                    projetos3dHTML += '</ul>';
+                }
+            }
+
             contentDiv.innerHTML = `
                 <div class="details-grid">
                     <div class="detail-item"><strong>Status</strong><span>${projeto.status}</span></div>
                     <div class="detail-item"><strong>Prazo</strong><span>${new Date(projeto.prazo.seconds * 1000).toLocaleDateString()}</span></div>
                 </div>
-                 <h4>Progresso</h4>
-                 ${objetivosHTML}
+                <h4>Progresso</h4>
+                ${objetivosHTML}
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+                <h4>Documentos</h4>
+                ${documentosHTML}
+                <hr style="border-color: var(--primary); margin: 20px 0;">
+                <h4>Projetos 3D</h4>
+                ${projetos3dHTML}
             `;
              openModal('projeto-detalhes-modal');
         }
@@ -467,4 +501,3 @@
     </script>
 </body>
 </html>
-
