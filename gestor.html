@@ -963,6 +963,7 @@
                             <thead>
                                 <tr>
                                     <th>Nome do Arquivo</th>
+                                    <th>Visível p/ Cliente</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -976,6 +977,7 @@
                             <thead>
                                 <tr>
                                     <th>Nome do Arquivo</th>
+                                    <th>Visível p/ Cliente</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -1540,34 +1542,6 @@
                         <input type="number" step="0.01" id="servico-rapido-valor-mao-de-obra" required>
                     </div>
                 </div>
-
-                <hr style="border-color: var(--primary); margin: 20px 0;">
-
-                <h4>Peças Padrão</h4>
-                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr; align-items: end; gap: 15px;">
-                     <div class="form-group">
-                        <label for="servico-rapido-peca-select">Peça</label>
-                        <select id="servico-rapido-peca-select"></select>
-                    </div>
-                     <div class="form-group">
-                        <label for="servico-rapido-peca-qtd">Quantidade</label>
-                        <input type="number" id="servico-rapido-peca-qtd" value="1" min="0.1" step="0.1">
-                    </div>
-                    <button type="button" id="add-peca-servico-rapido-btn" class="btn btn-primary">Adicionar Peça</button>
-                </div>
-                <ul id="pecas-servico-rapido-lista" class="pecas-lista"></ul>
-                
-                <hr style="border-color: var(--primary); margin: 20px 0;">
-
-                <h4>Ferramentas Padrão</h4>
-                 <div class="form-grid" style="grid-template-columns: 2fr 1fr; align-items: end; gap: 15px;">
-                     <div class="form-group">
-                        <label for="servico-rapido-ferramenta-select">Ferramenta</label>
-                        <select id="servico-rapido-ferramenta-select"></select>
-                    </div>
-                    <button type="button" id="add-ferramenta-servico-rapido-btn" class="btn btn-primary">Adicionar Ferramenta</button>
-                </div>
-                <ul id="ferramentas-servico-rapido-lista" class="pecas-lista"></ul>
                 
                 <hr style="border-color: var(--primary); margin: 20px 0;">
 
@@ -1804,10 +1778,10 @@
         let confirmCallback = null; // Variável para o callback de confirmação
 
         const defaultServicosPadrao = [
-            { nome: 'Troca de Óleo e Filtro', descricao: 'Troca de óleo do motor e filtro de óleo.', maoDeObra: 50.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
-            { nome: 'Alinhamento e Balanceamento', descricao: 'Alinhamento da suspensão e balanceamento das 4 rodas.', maoDeObra: 120.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
-            { nome: 'Troca de Pastilhas de Freio', descricao: 'Substituição das pastilhas de freio dianteiras.', maoDeObra: 80.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
-            { nome: 'Revisão Básica', descricao: 'Verificação de níveis, filtros e itens de segurança.', maoDeObra: 150.00, pecas: [], ferramentas: [], associacoesVeiculos: [] },
+            { nome: 'Troca de Óleo e Filtro', descricao: 'Troca de óleo do motor e filtro de óleo.', maoDeObra: 50.00, associacoesVeiculos: [] },
+            { nome: 'Alinhamento e Balanceamento', descricao: 'Alinhamento da suspensão e balanceamento das 4 rodas.', maoDeObra: 120.00, associacoesVeiculos: [] },
+            { nome: 'Troca de Pastilhas de Freio', descricao: 'Substituição das pastilhas de freio dianteiras.', maoDeObra: 80.00, associacoesVeiculos: [] },
+            { nome: 'Revisão Básica', descricao: 'Verificação de níveis, filtros e itens de segurança.', maoDeObra: 150.00, associacoesVeiculos: [] },
         ];
 
         // --- Declarações de funções de renderização ---
@@ -2334,8 +2308,6 @@
                 nome: document.getElementById('servico-rapido-nome').value,
                 descricao: document.getElementById('servico-rapido-descricao').value,
                 maoDeObra: parseFloat(document.getElementById('servico-rapido-valor-mao-de-obra').value),
-                pecas: [], // peças padrão não são mais aqui, apenas no serviço real
-                ferramentas: [], // ferramentas padrão não são mais aqui
                 associacoesVeiculos: associacoesAtuais
             };
 
@@ -2756,22 +2728,29 @@
         function renderAnexos(anexos, tipo) {
             const tableId = tipo === 'documento' ? 'projeto-documentos-table' : 'projeto-projetos3d-table';
             const tableBody = document.getElementById(tableId);
-            if(!tableBody) return;
+            if (!tableBody) return;
             tableBody.innerHTML = '';
             anexos.forEach((anexo) => {
                 const row = document.createElement('tr');
+                const visibilityIcon = anexo.visivelParaCliente ? 'fa-eye' : 'fa-eye-slash';
+                const visibilityTitle = anexo.visivelParaCliente ? 'Visível para o cliente' : 'Oculto para o cliente';
                 row.innerHTML = `
                     <td><a href="${anexo.url}" target="_blank" rel="noopener noreferrer">${anexo.nome}</a></td>
+                    <td>
+                        <button class="view-btn toggle-visibility-btn" title="${visibilityTitle}">
+                            <i class="fas ${visibilityIcon}"></i>
+                        </button>
+                    </td>
                     <td class="actions-cell">
                         <button class="delete-btn"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
-                const deleteBtn = row.querySelector('.delete-btn');
-                if (deleteBtn) {
-                    deleteBtn.addEventListener('click', (event) => {
-                        handleDeleteAnexo(event, anexo);
-                    });
-                }
+                row.querySelector('.delete-btn').addEventListener('click', (event) => {
+                    handleDeleteAnexo(event, anexo);
+                });
+                row.querySelector('.toggle-visibility-btn').addEventListener('click', (event) => {
+                    handleToggleVisibility(event, anexo, tipo);
+                });
                 tableBody.appendChild(row);
             });
         }
@@ -2806,6 +2785,32 @@
                     }
                 }
             });
+        };
+
+        window.handleToggleVisibility = async (event, anexo, tipo) => {
+            event.stopPropagation();
+            const fieldToUpdate = tipo === 'documento' ? 'documentos' : 'projetos3d';
+            const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
+
+            try {
+                const projetoDoc = await getDoc(docRef);
+                if (!projetoDoc.exists()) return;
+
+                const projetoData = projetoDoc.data();
+                const fileArray = projetoData[fieldToUpdate] || [];
+
+                const fileIndex = fileArray.findIndex(f => f.fullPath === anexo.fullPath);
+                if (fileIndex !== -1) {
+                    const updatedFile = { ...fileArray[fileIndex] };
+                    updatedFile.visivelParaCliente = !updatedFile.visivelParaCliente;
+                    fileArray[fileIndex] = updatedFile;
+
+                    await updateDoc(docRef, { [fieldToUpdate]: fileArray });
+                }
+            } catch (error) {
+                console.error("Erro ao alternar visibilidade:", error);
+                showAlert("Não foi possível alterar a visibilidade do arquivo.");
+            }
         };
 
         // --- ATUALIZAÇÃO DO DASHBOARD ---
@@ -2966,7 +2971,10 @@
             document.getElementById('servico-descricao').value = servico.descricao;
             document.getElementById('servico-valor-mao-de-obra').value = servico.maoDeObra.toFixed(2);
             
-            pecasSelecionadas = Array.isArray(servico.pecas) ? [...servico.pecas] : [];
+            pecasSelecionadas = []; // Limpa a lista antes de adicionar as peças do serviço rápido
+            if (Array.isArray(servico.pecas)) {
+                servico.pecas.forEach(p => pecasSelecionadas.push(p));
+            }
             renderPecasList();
 
             const ferramentasListaUI = document.getElementById('ferramentas-necessarias-lista');
@@ -3395,7 +3403,8 @@
                     nome: file.name,
                     url: downloadURL,
                     fullPath: storagePath,
-                    createdAt: Timestamp.now()
+                    createdAt: Timestamp.now(),
+                    visivelParaCliente: false // NOVO: Padrão para invisível
                 };
 
                 const docRef = doc(db, `users/${currentUserId}/projetos`, currentProjectId);
