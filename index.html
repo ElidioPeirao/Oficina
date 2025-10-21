@@ -25,15 +25,12 @@
         .hidden { display: none !important; }
         .auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .auth-form { background-color: var(--bg-light-dark); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; text-align: center; border-top: 4px solid var(--orange-highlight); }
-        .auth-logo { max-width: 180px; height: auto; margin-bottom: 20px; }
         .auth-form h2 { margin-bottom: 25px; }
         .input-group { margin-bottom: 20px; }
         .input-group input { width: 100%; padding: 12px 15px; background-color: var(--bg-dark); border: 1px solid var(--primary); border-radius: 8px; color: var(--text-light); font-size: 16px; }
         .auth-btn { width: 100%; padding: 12px; background-color: var(--orange-highlight); border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; }
         #auth-error { color: var(--accent); margin-top: 15px; min-height: 20px; }
-        #main-app-portal header { background-color: var(--bg-light-dark); padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--primary); }
-        .header-left { display: flex; align-items: center; gap: 20px; }
-        .header-logo { max-height: 50px; height: auto; }
+        #main-app-portal header { background-color: var(--bg-light-dark); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--primary); }
         #main-app-portal header h2 { font-size: 24px; }
         #main-app-portal header #client-name { color: var(--orange-highlight); }
         #logout-btn-portal { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; }
@@ -58,13 +55,25 @@
         .status-orcamento { background-color: var(--yellow-warning); color: var(--bg-dark); }
         .status-aprovada { background-color: var(--green-success); color: #fff; }
         .status-paga { background-color: var(--primary); color: #fff; }
+
+        /* File Browser Styles */
+        .file-browser-container { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
+        .file-item, .folder-item { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 120px; height: 120px; background-color: var(--bg-dark); border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; transition: background-color 0.2s; }
+        .file-item:hover, .folder-item:hover { background-color: var(--primary); }
+        .file-item i, .folder-item i { font-size: 40px; margin-bottom: 10px; color: var(--orange-highlight); }
+        .file-item span, .folder-item span { font-size: 14px; word-break: break-word; }
+        .breadcrumb { margin-bottom: 15px; }
+        .breadcrumb span { cursor: pointer; color: var(--text-muted); }
+        .breadcrumb span:hover { color: var(--text-light); }
+        .breadcrumb span:last-child { color: var(--orange-highlight); cursor: default; }
+
     </style>
 </head>
 <body>
 
     <div id="login-view" class="auth-container">
         <div class="auth-form">
-            <img src="https://i.imgur.com/31xgQbN.png" alt="Logo da Empresa" class="auth-logo">
+            <img src="https://i.imgur.com/31xgQbN.png" alt="Logo da Empresa" style="max-width: 150px; margin-bottom: 20px;">
             <h2><i class="fas fa-user-circle"></i> Portal do Cliente</h2>
             <form id="login-form-portal">
                 <div class="input-group">
@@ -78,30 +87,28 @@
 
     <div id="main-app-portal" class="hidden">
         <header>
-            <div class="header-left">
-                <img src="https://i.imgur.com/31xgQbN.png" alt="Logo da Empresa" class="header-logo">
-                <h2>Bem-vindo, <span id="client-name"></span>!</h2>
-            </div>
+            <h2>Bem-vindo, <span id="client-name"></span>!</h2>
             <button id="logout-btn-portal"><i class="fas fa-sign-out-alt"></i> Sair</button>
         </header>
         <main class="portal-container">
-            <section id="automotivo-portal">
+            <section id="automotivo-portal" class="hidden">
                 <h3><i class="fas fa-car"></i> Meus Veículos</h3>
                 <div id="veiculos-list"></div>
             </section>
-            <hr style="border-color: var(--primary); margin: 40px 0;">
-            <section id="industrial-portal">
+            <hr id="hr-automotivo-industrial" class="hidden" style="border-color: var(--primary); margin: 40px 0;">
+            <section id="industrial-portal" class="hidden">
                 <h3><i class="fas fa-industry"></i> Meus Projetos</h3>
                 <div id="projetos-list"></div>
             </section>
-            <hr style="border-color: var(--primary); margin: 40px 0;">
-            <section id="notas-portal">
+            <hr id="hr-industrial-notas" class="hidden" style="border-color: var(--primary); margin: 40px 0;">
+            <section id="notas-portal" class="hidden">
                 <h3><i class="fas fa-file-invoice"></i> Minhas Notas e Orçamentos</h3>
                 <div id="notas-list"></div>
             </section>
         </main>
     </div>
 
+    <!-- Modais para Detalhes -->
     <div id="veiculo-detalhes-modal" class="modal hidden">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
@@ -153,6 +160,12 @@
 
         const loginView = document.getElementById('login-view');
         const mainApp = document.getElementById('main-app-portal');
+        
+        let currentProjectData = {};
+        let portalPath = {
+            documentos: [],
+            projetos3d: []
+        };
         
         // --- LÓGICA DE LOGIN/SESSÃO ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -211,13 +224,26 @@
 
         function loadVeiculos(userId, clienteId) {
             const q = query(collection(db, `users/${userId}/veiculos`), where("proprietarioId", "==", clienteId));
+            const section = document.getElementById('automotivo-portal');
+            const hr = document.getElementById('hr-automotivo-industrial');
+
             onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('veiculos-list');
                 list.innerHTML = '';
                 if (snapshot.empty) {
-                    list.innerHTML = '<p>Nenhum veículo encontrado.</p>';
+                    section.classList.add('hidden');
+                    hr.classList.add('hidden');
                     return;
                 }
+                section.classList.remove('hidden');
+                
+                const hasIndustrial = !document.getElementById('industrial-portal').classList.contains('hidden');
+                const hasNotas = !document.getElementById('notas-portal').classList.contains('hidden');
+                if(hasIndustrial || hasNotas) {
+                    hr.classList.remove('hidden');
+                }
+
+
                 snapshot.forEach(doc => {
                     const veiculo = doc.data();
                     const card = document.createElement('div');
@@ -231,13 +257,27 @@
         
         function loadProjetos(userId, clienteId) {
             const q = query(collection(db, `users/${userId}/projetos`), where("clienteId", "==", clienteId));
+            const section = document.getElementById('industrial-portal');
+            const hrAutomotivo = document.getElementById('hr-automotivo-industrial');
+            const hrNotas = document.getElementById('hr-industrial-notas');
+
             onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('projetos-list');
                 list.innerHTML = '';
                  if (snapshot.empty) {
-                    list.innerHTML = '<p>Nenhum projeto encontrado.</p>';
+                    section.classList.add('hidden');
+                    hrAutomotivo.classList.add('hidden');
+                    hrNotas.classList.add('hidden');
                     return;
                 }
+                section.classList.remove('hidden');
+                
+                const hasAutomotivo = !document.getElementById('automotivo-portal').classList.contains('hidden');
+                if(hasAutomotivo) hrAutomotivo.classList.remove('hidden');
+
+                const hasNotas = !document.getElementById('notas-portal').classList.contains('hidden');
+                if(hasNotas) hrNotas.classList.remove('hidden');
+
                 snapshot.forEach(doc => {
                     const projeto = doc.data();
                     const card = document.createElement('div');
@@ -251,13 +291,22 @@
         
         function loadNotas(userId, clienteId) {
             const q = query(collection(db, `users/${userId}/notas`), where("clienteId", "==", clienteId));
+            const section = document.getElementById('notas-portal');
+            const hr = document.getElementById('hr-industrial-notas');
+
             onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('notas-list');
                 list.innerHTML = '';
                 if(snapshot.empty) {
-                    list.innerHTML = '<p>Nenhuma nota ou orçamento encontrado.</p>';
+                    section.classList.add('hidden');
+                    hr.classList.add('hidden');
                     return;
                 }
+                section.classList.remove('hidden');
+                const hasIndustrial = !document.getElementById('industrial-portal').classList.contains('hidden');
+                if(hasIndustrial) hr.classList.remove('hidden');
+
+
                 snapshot.forEach(doc => {
                     const nota = doc.data();
                     const card = document.createElement('div');
@@ -339,69 +388,140 @@
         }
         
         async function showProjetoDetails(userId, projetoId){
-            const projeto = (await getDoc(doc(db, `users/${userId}/projetos`, projetoId))).data();
+            const projetoRef = doc(db, `users/${userId}/projetos`, projetoId);
+            onSnapshot(projetoRef, (docSnap) => {
+                if (!docSnap.exists()) {
+                    console.error("Projeto não encontrado");
+                    return;
+                }
+                currentProjectData = docSnap.data();
 
-            document.getElementById('projeto-detalhe-titulo-modal').textContent = `Detalhes de ${projeto.nome}`;
-            const contentDiv = document.getElementById('projeto-detalhes-content');
-            
-            let objetivosHTML = '<p>Nenhum objetivo definido.</p>';
-            if(projeto.objetivos && projeto.objetivos.length > 0) {
-                 const concluidos = projeto.objetivos.filter(o => o.concluido).length;
-                const total = projeto.objetivos.length;
-                const porcentagem = total > 0 ? (concluidos / total) * 100 : 0;
+                document.getElementById('projeto-detalhe-titulo-modal').textContent = `Detalhes de ${currentProjectData.nome}`;
+                const contentDiv = document.getElementById('projeto-detalhes-content');
                 
-                objetivosHTML = `
-                    <div class="progress-bar-background" style="margin-bottom: 10px;">
-                        <div class="progress-bar-fill" style="width: ${porcentagem}%;"></div>
-                    </div>
-                    <ul>
-                        ${projeto.objetivos.map(o => `<li class="${o.concluido ? 'objetivo-texto concluido' : 'objetivo-texto'}"><i class="fas ${o.concluido ? 'fa-check-circle' : 'fa-circle'}"></i> ${o.nome}</li>`).join('')}
-                    </ul>
-                `;
-            }
+                let objetivosHTML = '<p>Nenhum objetivo definido.</p>';
+                if(currentProjectData.objetivos && currentProjectData.objetivos.length > 0) {
+                    const concluidos = currentProjectData.objetivos.filter(o => o.concluido).length;
+                    const total = currentProjectData.objetivos.length;
+                    const porcentagem = total > 0 ? (concluidos / total) * 100 : 0;
+                    
+                    objetivosHTML = `
+                        <div class="progress-bar-background" style="margin-bottom: 10px;">
+                            <div class="progress-bar-fill" style="width: ${porcentagem}%;"></div>
+                        </div>
+                        <ul>
+                            ${currentProjectData.objetivos.map(o => `<li class="${o.concluido ? 'objetivo-texto concluido' : 'objetivo-texto'}"><i class="fas ${o.concluido ? 'fa-check-circle' : 'fa-circle'}"></i> ${o.nome}</li>`).join('')}
+                        </ul>
+                    `;
+                }
 
-            // Filtrar e renderizar documentos visíveis
-            let documentosHTML = '<p>Nenhum documento disponível.</p>';
-            if (Array.isArray(projeto.documentos) && projeto.documentos.length > 0) {
-                const documentosVisiveis = projeto.documentos.filter(doc => doc.visivelParaCliente === true);
+                // Lógica para renderizar seções de arquivos apenas se houver conteúdo visível
+                let documentosHTML = '';
+                const documentosVisiveis = (currentProjectData.documentos || []).filter(doc => doc.visivelParaCliente);
                 if (documentosVisiveis.length > 0) {
-                    documentosHTML = '<ul>';
-                    documentosVisiveis.forEach(doc => {
-                        documentosHTML += `<li><a href="${doc.url}" target="_blank" rel="noopener noreferrer">${doc.nome}</a></li>`;
-                    });
-                    documentosHTML += '</ul>';
+                    documentosHTML = `
+                        <hr style="border-color: var(--primary); margin: 20px 0;">
+                        <h4>Documentos</h4>
+                        <div class="breadcrumb" id="portal-breadcrumb-documentos"></div>
+                        <div class="file-browser-container" id="portal-documentos-browser"></div>
+                    `;
                 }
-            }
 
-            // Filtrar e renderizar projetos 3D visíveis
-            let projetos3dHTML = '<p>Nenhum projeto 3D disponível.</p>';
-            if (Array.isArray(projeto.projetos3d) && projeto.projetos3d.length > 0) {
-                const projetos3dVisiveis = projeto.projetos3d.filter(proj => proj.visivelParaCliente === true);
+                let projetos3dHTML = '';
+                const projetos3dVisiveis = (currentProjectData.projetos3d || []).filter(proj => proj.visivelParaCliente);
                 if (projetos3dVisiveis.length > 0) {
-                    projetos3dHTML = '<ul>';
-                    projetos3dVisiveis.forEach(proj => {
-                        projetos3dHTML += `<li><a href="${proj.url}" target="_blank" rel="noopener noreferrer">${proj.nome}</a></li>`;
-                    });
-                    projetos3dHTML += '</ul>';
+                     projetos3dHTML = `
+                        <hr style="border-color: var(--primary); margin: 20px 0;">
+                        <h4>Projetos 3D</h4>
+                        <div class="breadcrumb" id="portal-breadcrumb-projetos3d"></div>
+                        <div class="file-browser-container" id="portal-projetos3d-browser"></div>
+                    `;
                 }
-            }
 
-            contentDiv.innerHTML = `
-                <div class="details-grid">
-                    <div class="detail-item"><strong>Status</strong><span>${projeto.status}</span></div>
-                    <div class="detail-item"><strong>Prazo</strong><span>${new Date(projeto.prazo.seconds * 1000).toLocaleDateString()}</span></div>
-                </div>
-                <h4>Progresso</h4>
-                ${objetivosHTML}
-                <hr style="border-color: var(--primary); margin: 20px 0;">
-                <h4>Documentos</h4>
-                ${documentosHTML}
-                <hr style="border-color: var(--primary); margin: 20px 0;">
-                <h4>Projetos 3D</h4>
-                ${projetos3dHTML}
-            `;
+
+                contentDiv.innerHTML = `
+                    <div class="details-grid">
+                        <div class="detail-item"><strong>Status</strong><span>${currentProjectData.status}</span></div>
+                        <div class="detail-item"><strong>Prazo</strong><span>${new Date(currentProjectData.prazo.seconds * 1000).toLocaleDateString()}</span></div>
+                    </div>
+                    <h4>Progresso</h4>
+                    ${objetivosHTML}
+                    ${documentosHTML}
+                    ${projetos3dHTML}
+                `;
+
+                if (documentosVisiveis.length > 0) {
+                    portalPath.documentos = [{ id: 'root', nome: 'Início' }];
+                    renderClientFileBrowser('documentos');
+                }
+                if (projetos3dVisiveis.length > 0) {
+                    portalPath.projetos3d = [{ id: 'root', nome: 'Início' }];
+                    renderClientFileBrowser('projetos3d');
+                }
+            });
+
              openModal('projeto-detalhes-modal');
         }
+
+        function renderClientFileBrowser(type) {
+            const allItems = currentProjectData[type] || [];
+            const browserId = `portal-${type}-browser`;
+            const breadcrumbId = `portal-breadcrumb-${type}`;
+            const container = document.getElementById(browserId);
+            const breadcrumbContainer = document.getElementById(breadcrumbId);
+            
+            if (!container || !breadcrumbContainer) return;
+
+            const currentPath = portalPath[type];
+            const currentParentId = currentPath[currentPath.length - 1].id;
+
+            // Render Breadcrumb
+            if (currentPath.length > 1) {
+                breadcrumbContainer.innerHTML = currentPath.map((p, i) => `<span class="breadcrumb-item" data-index="${i}">${p.nome}</span>`).join(' > ');
+                breadcrumbContainer.querySelectorAll('.breadcrumb-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        portalPath[type].splice(index + 1);
+                        renderClientFileBrowser(type);
+                    });
+                });
+            } else {
+                breadcrumbContainer.innerHTML = '';
+            }
+
+            container.innerHTML = '';
+            
+            const itemsInCurrentDir = allItems.filter(item => {
+                if (currentParentId === 'root') {
+                    return item.parentId === 'root' || item.parentId == null; 
+                }
+                return item.parentId === currentParentId;
+            });
+
+            // Render folders
+            itemsInCurrentDir.filter(item => item.type === 'folder' && item.visivelParaCliente).forEach(folder => {
+                const folderDiv = document.createElement('div');
+                folderDiv.className = 'folder-item';
+                folderDiv.innerHTML = `<i class="fas fa-folder"></i><span>${folder.nome}</span>`;
+                folderDiv.addEventListener('click', () => {
+                    portalPath[type].push({ id: folder.id, nome: folder.nome });
+                    renderClientFileBrowser(type);
+                });
+                container.appendChild(folderDiv);
+            });
+
+            // Render files
+            itemsInCurrentDir.filter(item => item.type !== 'folder' && item.visivelParaCliente === true).forEach(file => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file-item';
+                fileDiv.innerHTML = `<i class="fas fa-file-alt"></i><span>${file.nome}</span>`;
+                fileDiv.addEventListener('click', () => {
+                    window.open(file.url, '_blank');
+                });
+                container.appendChild(fileDiv);
+            });
+        }
+
 
         async function showChecklistDetails(userId, veiculoId, checklistId) {
             const checklistRef = doc(db, `users/${userId}/veiculos/${veiculoId}/checklists`, checklistId);
@@ -507,3 +627,4 @@
     </script>
 </body>
 </html>
+
